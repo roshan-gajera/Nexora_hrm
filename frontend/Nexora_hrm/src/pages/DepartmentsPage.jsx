@@ -1,9 +1,44 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Building2 } from "lucide-react";
 import { C } from "../constants/theme";
 import { Card, PageHeader, Avatar } from "../components/ui";
+import { fetchDepartments } from "../api/departmentsApi";
+import { fetchEmployees } from "../api/employeesApi";
 
-export default function DepartmentsPage({ departments, employees }) {
+export default function DepartmentsPage() {
+  const [departments, setDepartments] = useState([]);
+  const [employees,   setEmployees]   = useState([]);
+  const [loading,     setLoading]     = useState(true);
+
+  useEffect(() => {
+    let isMounted = true;
+    setLoading(true);
+
+    Promise.allSettled([fetchDepartments(), fetchEmployees()])
+      .then(([deptRes, empRes]) => {
+        if (!isMounted) return;
+        if (deptRes.status === "fulfilled") {
+          const items = Array.isArray(deptRes.value) ? deptRes.value : deptRes.value?.results || [];
+          setDepartments(items);
+        }
+        if (empRes.status === "fulfilled") {
+          const items = Array.isArray(empRes.value) ? empRes.value : empRes.value?.results || [];
+          setEmployees(items);
+        }
+      })
+      .finally(() => { if (isMounted) setLoading(false); });
+
+    return () => { isMounted = false; };
+  }, []);
+
+  if (loading) {
+    return (
+      <div style={{ padding: 40, textAlign: "center", color: C.slate, fontFamily: "Inter, sans-serif" }}>
+        Loading departments...
+      </div>
+    );
+  }
+
   return (
     <div>
       <PageHeader title="Departments" subtitle="Organizational structure and headcount by function" />

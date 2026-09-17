@@ -51,7 +51,7 @@ input, select, textarea { font-family: inherit; }
 .toast-exit  { animation: toastOut 0.28s ease forwards; }
 
 /* Row hover */
-tr.hoverable:hover td { background: #F8FAFC; }
+tr.hoverable:hover td { background: #eff6fd; cursor: grab;}
 
 /* Smooth transitions on interactive elements */
 button, a, [role="button"] { transition: opacity 0.15s, background 0.15s, box-shadow 0.15s; }

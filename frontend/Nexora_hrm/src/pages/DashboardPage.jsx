@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Users, CalendarCheck, CalendarDays, Briefcase, Plus, Download, UserCheck } from "lucide-react";
 import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
@@ -8,6 +8,10 @@ import { C } from "../constants/theme";
 import { JOBS_SEED } from "../data/mockData";
 import { statusTone, fmtMoney } from "../utils/helpers";
 import { Card, PageHeader, StatCard, Table, Avatar, Pill, EmptyState, Button } from "../components/ui";
+import { fetchEmployees } from "../api/employeesApi";
+import { fetchDepartments } from "../api/departmentsApi";
+import { fetchLeaves } from "../api/leavesApi";
+import { fetchAttendance } from "../api/attendanceApi";
 
 const ACTIVITY = [
   { id: 1, name: "Rahul Sharma",   action: "applied for Casual Leave",       time: "2m ago",  tone: "amber" },
@@ -17,7 +21,33 @@ const ACTIVITY = [
   { id: 5, name: "Karan Shah",     action: "completed performance review",   time: "3h ago",  tone: "teal"  },
 ];
 
-export default function DashboardPage({ employees, leaves, attendance, departments, setPage }) {
+export default function DashboardPage({ setPage }) {
+  const [employees,   setEmployees]   = useState([]);
+  const [departments, setDepartments] = useState([]);
+  const [leaves,      setLeaves]      = useState([]);
+  const [attendance,  setAttendance]  = useState([]);
+  const [loading,     setLoading]     = useState(true);
+
+  useEffect(() => {
+    let isMounted = true;
+    setLoading(true);
+
+    Promise.allSettled([
+      fetchEmployees(),
+      fetchDepartments(),
+      fetchLeaves(),
+      fetchAttendance(),
+    ]).then(([empRes, deptRes, leaveRes, attRes]) => {
+      if (!isMounted) return;
+      if (empRes.status   === "fulfilled") setEmployees(  Array.isArray(empRes.value)   ? empRes.value   : empRes.value?.results   || []);
+      if (deptRes.status  === "fulfilled") setDepartments(Array.isArray(deptRes.value)  ? deptRes.value  : deptRes.value?.results  || []);
+      if (leaveRes.status === "fulfilled") setLeaves(     Array.isArray(leaveRes.value) ? leaveRes.value : leaveRes.value?.results || []);
+      if (attRes.status   === "fulfilled") setAttendance( Array.isArray(attRes.value)   ? attRes.value   : attRes.value?.results   || []);
+    }).finally(() => { if (isMounted) setLoading(false); });
+
+    return () => { isMounted = false; };
+  }, []);
+
   const headcountTrend = [
     { month: "Feb", count: 172 }, { month: "Mar", count: 178 }, { month: "Apr", count: 183 },
     { month: "May", count: 189 }, { month: "Jun", count: 196 }, { month: "Jul", count: employees.length + 172 },
@@ -36,6 +66,14 @@ export default function DashboardPage({ employees, leaves, attendance, departmen
 
   const today = new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
 
+  if (loading) {
+    return (
+      <div style={{ padding: 40, textAlign: "center", color: C.slate, fontFamily: "Inter, sans-serif" }}>
+        Loading dashboard...
+      </div>
+    );
+  }
+
   return (
     <div className="page-enter">
       <PageHeader
@@ -43,7 +81,7 @@ export default function DashboardPage({ employees, leaves, attendance, departmen
         subtitle={today}
         action={
           <div style={{ display: "flex", gap: 10 }}>
-            <Button variant="outline" icon={Download} small>Export</Button>
+            <Button variant="outline" icon={Download} small>Export CSV</Button>
             <Button icon={Plus} small onClick={() => setPage("employees")}>Add Employee</Button>
           </div>
         }
@@ -51,10 +89,10 @@ export default function DashboardPage({ employees, leaves, attendance, departmen
 
       {/* Stat cards */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16, marginBottom: 20 }}>
-        <StatCard label="Total Employees" value={employees.length} delta="+4.2% this quarter"  positive icon={Users} accent={C.blue}  />
-        <StatCard label="Present Today" value={`${presentToday}/${attendance.length}`} delta="On track" positive icon={CalendarCheck} accent={C.teal}  />
-        <StatCard label="Pending Leave Requests" value={pendingLeaves.length} delta="Needs review" positive={false} icon={CalendarDays} accent={C.amber} />
-        <StatCard label="Open Positions" value={JOBS_SEED.filter((j) => j.status === "Open").length}  delta="Across 4 depts" positive icon={Briefcase} accent={C.coral} />
+        <StatCard label="Total Employees"       value={employees.length}                                            delta="+4.2% this quarter" positive icon={Users}       accent={C.blue}  />
+        <StatCard label="Present Today"         value={`${presentToday}/${attendance.length}`}                      delta="On track"           positive icon={CalendarCheck} accent={C.teal}  />
+        <StatCard label="Pending Leave Requests" value={pendingLeaves.length}                                       delta="Needs review"  positive={false} icon={CalendarDays} accent={C.amber} />
+        <StatCard label="Open Positions"        value={JOBS_SEED.filter((j) => j.status === "Open").length}         delta="Across 4 depts"    positive icon={Briefcase}   accent={C.coral} />
       </div>
 
       {/* Charts row */}
@@ -123,10 +161,10 @@ export default function DashboardPage({ employees, leaves, attendance, departmen
       {/* Quick actions */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px,1fr))", gap: 12, marginBottom: 20 }}>
         {[
-          { label: "Add Employee",    icon: Users,      page: "employees",   accent: C.blue  },
-          { label: "Approve Leaves",  icon: CalendarDays, page: "leave",     accent: C.amber },
-          { label: "Run Payroll",     icon: Briefcase,  page: "payroll",     accent: C.teal  },
-          { label: "Post a Job",      icon: UserCheck,  page: "recruitment", accent: C.coral },
+          { label: "Add Employee",    icon: Users,        page: "employees",   accent: C.blue  },
+          { label: "Approve Leaves",  icon: CalendarDays, page: "leave",       accent: C.amber },
+          { label: "Run Payroll",     icon: Briefcase,    page: "payroll",     accent: C.teal  },
+          { label: "Post a Job",      icon: UserCheck,    page: "recruitment", accent: C.coral },
         ].map((q) => (
           <div key={q.label} onClick={() => setPage(q.page)} style={{ background: C.panel, border: `1px solid ${C.border}`, borderRadius: 10, padding: "16px 18px", cursor: "pointer", display: "flex", alignItems: "center", gap: 12, transition: "box-shadow 0.15s" }}
             onMouseEnter={(e) => e.currentTarget.style.boxShadow = "0 4px 16px rgba(20,33,61,0.08)"}

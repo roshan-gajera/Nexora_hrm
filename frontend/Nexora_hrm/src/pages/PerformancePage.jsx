@@ -1,9 +1,10 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Star, Check, TrendingUp } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell } from "recharts";
 import { C } from "../constants/theme";
 import { statusTone } from "../utils/helpers";
 import { Card, PageHeader, StatCard, Table, Modal, Avatar, Pill, Button } from "../components/ui";
+import { fetchPerformanceReviews } from "../api/performanceApi";
 
 function Stars({ rating, size = 14 }) {
   return (
@@ -15,16 +16,41 @@ function Stars({ rating, size = 14 }) {
   );
 }
 
-export default function PerformancePage({ reviews }) {
+export default function PerformancePage() {
+  const [reviews, setReviews] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [viewing, setViewing] = useState(null);
 
-  const avg       = (reviews.reduce((s, r) => s + r.rating, 0) / reviews.length).toFixed(1);
+  // Load performance reviews on mount
+  useEffect(() => {
+    let isMounted = true;
+    setLoading(true);
+    fetchPerformanceReviews()
+      .then((res) => {
+        if (!isMounted) return;
+        const items = Array.isArray(res) ? res : res?.results || [];
+        setReviews(items);
+      })
+      .catch((err) => console.warn("Performance reviews fetch error:", err))
+      .finally(() => { if (isMounted) setLoading(false); });
+    return () => { isMounted = false; };
+  }, []);
+
+  const avg       = reviews.length > 0 ? (reviews.reduce((s, r) => s + r.rating, 0) / reviews.length).toFixed(1) : "0.0";
   const completed = reviews.filter((r) => r.status === "Completed").length;
 
   const ratingDist = [1, 2, 3, 4, 5].map((r) => ({
     label: `${r} Star${r > 1 ? "s" : ""}`,
     count: reviews.filter((rv) => rv.rating === r).length,
   }));
+
+  if (loading) {
+    return (
+      <div style={{ padding: 40, textAlign: "center", color: C.slate, fontFamily: "Inter, sans-serif" }}>
+        Loading performance data...
+      </div>
+    );
+  }
 
   return (
     <div className="page-enter">

@@ -1,16 +1,18 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Plus, Check, XCircle, CalendarDays } from "lucide-react";
 import { C } from "../constants/theme";
 import { statusTone } from "../utils/helpers";
 import { Card, PageHeader, Button, Input, Select, Table, Modal, Avatar, Pill, EmptyState } from "../components/ui";
 import { useToast } from "../context/ToastContext";
+import { fetchLeaves, createLeaveRequest, updateLeaveStatus } from "../api/leavesApi";
+import { fetchEmployees } from "../api/employeesApi";
 
 const LEAVE_TYPES = ["Sick Leave", "Casual Leave", "Earned Leave", "Unpaid Leave"];
 const BALANCES = [
-  { type: "Casual Leave",  total: 12, used: 4,color: C.blue},
-  { type: "Sick Leave",    total: 10, used: 2,color: C.coral},
-  { type: "Earned Leave",  total: 15, used: 7,color: C.teal},
-  { type: "Unpaid Leave",  total: 5,  used: 0,color: C.amber},
+  { type: "Casual Leave",  total: 12, used: 4, color: C.blue  },
+  { type: "Sick Leave",    total: 10, used: 2, color: C.coral },
+  { type: "Earned Leave",  total: 15, used: 7, color: C.teal  },
+  { type: "Unpaid Leave",  total: 5,  used: 0, color: C.amber },
 ];
 
 function LeaveForm({ employees, onSave, onCancel }) {
@@ -20,7 +22,7 @@ function LeaveForm({ employees, onSave, onCancel }) {
   return (
     <form onSubmit={(e) => { e.preventDefault(); onSave(form); }}>
       <Select label="Employee"   value={form.employeeId} onChange={(e) => set("employeeId", e.target.value)} options={employees.map((e) => e.id)} />
-      <Select label="Leave type" value={form.type}       onChange={(e) => set("type",e.target.value)} options={LEAVE_TYPES} />
+      <Select label="Leave type" value={form.type}       onChange={(e) => set("type", e.target.value)} options={LEAVE_TYPES} />
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
         <Input label="From" type="date" value={form.from} onChange={(e) => set("from", e.target.value)} />
         <Input label="To"   type="date" value={form.to}   onChange={(e) => set("to",   e.target.value)} />
@@ -34,14 +36,38 @@ function LeaveForm({ employees, onSave, onCancel }) {
   );
 }
 
-import { createLeaveRequest, updateLeaveStatus } from "../api/hrmApi";
-
-export default function LeavePage({ leaves, setLeaves, employees }) {
+export default function LeavePage() {
   const toast = useToast();
-  const [tab,      setTab]      = useState("All");
-  const [showForm, setShowForm] = useState(false);
+  const [leaves,    setLeaves]    = useState([]);
+  const [employees, setEmployees] = useState([]);
+  const [loading,   setLoading]   = useState(true);
+  const [tab,       setTab]       = useState("All");
+  const [showForm,  setShowForm]  = useState(false);
+
   const tabs     = ["All", "Pending", "Approved", "Rejected"];
   const filtered = tab === "All" ? leaves : leaves.filter((l) => l.status === tab);
+
+  // Load leaves and employees on mount
+  useEffect(() => {
+    let isMounted = true;
+    setLoading(true);
+
+    Promise.allSettled([fetchLeaves(), fetchEmployees()])
+      .then(([leaveRes, empRes]) => {
+        if (!isMounted) return;
+        if (leaveRes.status === "fulfilled") {
+          const items = Array.isArray(leaveRes.value) ? leaveRes.value : leaveRes.value?.results || [];
+          setLeaves(items);
+        }
+        if (empRes.status === "fulfilled") {
+          const items = Array.isArray(empRes.value) ? empRes.value : empRes.value?.results || [];
+          setEmployees(items);
+        }
+      })
+      .finally(() => { if (isMounted) setLoading(false); });
+
+    return () => { isMounted = false; };
+  }, []);
 
   async function updateStatus(id, status) {
     try {
@@ -64,7 +90,7 @@ export default function LeavePage({ leaves, setLeaves, employees }) {
           to_date: form.to,
           days,
           reason: form.reason,
-          status: "Pending"
+          status: "Pending",
         });
       }
     } catch (err) {
@@ -77,6 +103,14 @@ export default function LeavePage({ leaves, setLeaves, employees }) {
 
   const pendingCount  = leaves.filter((l) => l.status === "Pending").length;
   const approvedCount = leaves.filter((l) => l.status === "Approved").length;
+
+  if (loading) {
+    return (
+      <div style={{ padding: 40, textAlign: "center", color: C.slate, fontFamily: "Inter, sans-serif" }}>
+        Loading leave data...
+      </div>
+    );
+  }
 
   return (
     <div className="page-enter">

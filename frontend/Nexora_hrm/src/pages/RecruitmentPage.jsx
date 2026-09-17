@@ -1,21 +1,55 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Plus, MapPin, Briefcase, Users } from "lucide-react";
 import { C } from "../constants/theme";
 import { statusTone } from "../utils/helpers";
 import { Card, PageHeader, Button, Avatar, Pill, Modal, Input, Select } from "../components/ui";
 import { useToast } from "../context/ToastContext";
+import { fetchJobs, fetchCandidates } from "../api/recruitmentApi";
 
 const STAGES = ["Applied", "Screening", "Interview", "Offer", "Hired", "Rejected"];
 const STAGE_COLORS = { Applied: C.slate, Screening: C.blue, Interview: C.amber, Offer: "#6B46A8", Hired: C.teal, Rejected: C.coral };
 
-export default function RecruitmentPage({ jobs, candidates }) {
+export default function RecruitmentPage() {
   const toast = useToast();
-  const [showForm, setShowForm] = useState(false);
-  const [selected, setSelected] = useState(null);
+  const [jobs,       setJobs]       = useState([]);
+  const [candidates, setCandidates] = useState([]);
+  const [loading,    setLoading]    = useState(true);
+  const [showForm,   setShowForm]   = useState(false);
+  const [selected,   setSelected]   = useState(null);
+
+  // Load jobs and candidates on mount
+  useEffect(() => {
+    let isMounted = true;
+    setLoading(true);
+
+    Promise.allSettled([fetchJobs(), fetchCandidates()])
+      .then(([jobRes, candRes]) => {
+        if (!isMounted) return;
+        if (jobRes.status === "fulfilled") {
+          const items = Array.isArray(jobRes.value) ? jobRes.value : jobRes.value?.results || [];
+          setJobs(items);
+        }
+        if (candRes.status === "fulfilled") {
+          const items = Array.isArray(candRes.value) ? candRes.value : candRes.value?.results || [];
+          setCandidates(items);
+        }
+      })
+      .finally(() => { if (isMounted) setLoading(false); });
+
+    return () => { isMounted = false; };
+  }, []);
 
   const totalApplicants = jobs.reduce((s, j) => s + j.applicants, 0);
   const openJobs        = jobs.filter((j) => j.status === "Open").length;
   const hiredCount      = candidates.filter((c) => c.stage === "Hired").length;
+
+  if (loading) {
+    return (
+      <div style={{ padding: 40, textAlign: "center", color: C.slate, fontFamily: "Inter, sans-serif" }}>
+        Loading recruitment data...
+      </div>
+    );
+  }
 
   return (
     <div className="page-enter">
@@ -28,8 +62,8 @@ export default function RecruitmentPage({ jobs, candidates }) {
       {/* Summary */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px,1fr))", gap: 14, marginBottom: 20 }}>
         {[
-          { label: "Open Positions",    value: openJobs,        color: C.teal  },
-          { label: "Total Applicants",  value: totalApplicants, color: C.blue  },
+          { label: "Open Positions",    value: openJobs,        color: C.teal    },
+          { label: "Total Applicants",  value: totalApplicants, color: C.blue    },
           { label: "In Interview",      value: candidates.filter((c) => c.stage === "Interview").length, color: C.amber },
           { label: "Hired This Cycle",  value: hiredCount,      color: "#6B46A8" },
         ].map((s) => (

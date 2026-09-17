@@ -33,7 +33,7 @@ export async function request(endpoint, options = {}) {
   }
 
   const config = {
-    ...options,
+  ...options,
     headers,
   };
 

@@ -1,9 +1,11 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Search, Plus, Pencil, Trash2, Mail, Phone, MapPin, Download, Filter } from "lucide-react";
 import { C } from "../constants/theme";
 import { statusTone, fmtMoney, exportToCSV } from "../utils/helpers";
 import { Card, PageHeader, Button, Input, Select, Table, Modal, Avatar, Pill, EmptyState } from "../components/ui";
 import { useToast } from "../context/ToastContext";
+import { fetchEmployees, createEmployee, updateEmployee, deleteEmployee } from "../api/employeesApi";
+import { fetchDepartments } from "../api/departmentsApi";
 
 function EmployeeForm({ initial, departments, onSave, onCancel }) {
   const [form, setForm] = useState(initial || {
@@ -70,10 +72,11 @@ function EmployeeProfileModal({ employee, onClose }) {
 
 const STATUS_FILTERS = ["All", "Active", "On Leave", "Inactive"];
 
-import { createEmployee, updateEmployee, deleteEmployee } from "../api/hrmApi";
-
-export default function EmployeesPage({ employees, setEmployees, departments }) {
+export default function EmployeesPage() {
   const toast = useToast();
+  const [employees,    setEmployees]    = useState([]);
+  const [departments,  setDepartments]  = useState([]);
+  const [loading,      setLoading]      = useState(true);
   const [search,       setSearch]       = useState("");
   const [deptFilter,   setDeptFilter]   = useState("All");
   const [statusFilter, setStatusFilter] = useState("All");
@@ -81,6 +84,28 @@ export default function EmployeesPage({ employees, setEmployees, departments }) 
   const [editing,      setEditing]      = useState(null);
   const [viewing,      setViewing]      = useState(null);
   const [deleteId,     setDeleteId]     = useState(null);
+
+  // Load employees and departments on mount
+  useEffect(() => {
+    let isMounted = true;
+    setLoading(true);
+
+    Promise.allSettled([fetchEmployees(), fetchDepartments()])
+      .then(([empRes, deptRes]) => {
+        if (!isMounted) return;
+        if (empRes.status === "fulfilled") {
+          const items = Array.isArray(empRes.value) ? empRes.value : empRes.value?.results || [];
+          setEmployees(items);
+        }
+        if (deptRes.status === "fulfilled") {
+          const items = Array.isArray(deptRes.value) ? deptRes.value : deptRes.value?.results || [];
+          setDepartments(items);
+        }
+      })
+      .finally(() => { if (isMounted) setLoading(false); });
+
+    return () => { isMounted = false; };
+  }, []);
 
   const filtered = useMemo(() => employees.filter((e) =>
     (deptFilter   === "All" || e.department === deptFilter) &&
@@ -123,7 +148,7 @@ export default function EmployeesPage({ employees, setEmployees, departments }) 
           ...form,
           id: res.employee_code || ("E" + (2000 + employees.length)),
           pk: res.id,
-          manager: "Priya Nair"
+          manager: "Priya Nair",
         };
         setEmployees((list) => [createdEmp, ...list]);
         toast("Employee added successfully");
@@ -138,7 +163,8 @@ export default function EmployeesPage({ employees, setEmployees, departments }) 
         toast("Employee added successfully");
       }
     }
-    setShowForm(false); setEditing(null);
+    setShowForm(false);
+    setEditing(null);
   }
 
   async function confirmDelete() {
@@ -160,6 +186,14 @@ export default function EmployeesPage({ employees, setEmployees, departments }) 
     acc[s] = employees.filter((e) => e.status === s).length;
     return acc;
   }, {});
+
+  if (loading) {
+    return (
+      <div style={{ padding: 40, textAlign: "center", color: C.slate, fontFamily: "Inter, sans-serif" }}>
+        Loading employee data...
+      </div>
+    );
+  }
 
   return (
     <div className="page-enter">
@@ -211,7 +245,9 @@ export default function EmployeesPage({ employees, setEmployees, departments }) 
       <Card style={{ padding: 0 }}>
         <Table
           columns={["Employee", "Department", "Role", "Status", "Location", "Joined", ""]}
-          rows={filtered}
+          rows={[...filtered].sort((a, b) =>
+            a.id.localeCompare(b.id, undefined, { numeric: true })
+          )}
           renderRow={(e) => (
             <tr key={e.id} className="hoverable" style={{ borderBottom: `1px solid ${C.border}`, cursor: "pointer" }}>
               <td style={{ padding: "12px 14px" }} onClick={() => setViewing(e)}>

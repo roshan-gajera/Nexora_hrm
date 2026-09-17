@@ -1,25 +1,42 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Wallet, Clock, TrendingUp, Download, Pencil, Play, RefreshCw } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell } from "recharts";
 import { C } from "../constants/theme";
 import { statusTone, fmtMoney, exportToCSV } from "../utils/helpers";
 import { Card, PageHeader, StatCard, Button, Table, Modal, Avatar, Pill } from "../components/ui";
 import { useToast } from "../context/ToastContext";
-import { updatePayroll, markPayrollPaid, generatePayroll, fetchPayroll } from "../api/hrmApi";
+import { fetchPayroll, updatePayroll, markPayrollPaid, generatePayroll } from "../api/payrollApi";
 
-export default function PayrollPage({ payroll, setPayroll }) {
+export default function PayrollPage() {
   const toast = useToast();
-  const [slip,   setSlip]   = useState(null);
-  const [search, setSearch] = useState("");
-  const [edit,   setEdit]   = useState(null);   // payroll record being edited
-  const [saving, setSaving] = useState(false);
+  const [payroll,      setPayroll]      = useState([]);
+  const [loading,      setLoading]      = useState(true);
+  const [slip,         setSlip]         = useState(null);
+  const [search,       setSearch]       = useState("");
+  const [edit,         setEdit]         = useState(null);
+  const [saving,       setSaving]       = useState(false);
   const [showGenerate, setShowGenerate] = useState(false);
-  const [genMonth, setGenMonth] = useState("July");
-  const [genYear, setGenYear]   = useState("2026");
-  const [generating, setGenerating] = useState(false);
+  const [genMonth,     setGenMonth]     = useState("July");
+  const [genYear,      setGenYear]      = useState("2026");
+  const [generating,   setGenerating]   = useState(false);
 
   const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
   const YEARS  = ["2024","2025","2026","2027","2028"];
+
+  // Load payroll on mount
+  useEffect(() => {
+    let isMounted = true;
+    setLoading(true);
+    fetchPayroll()
+      .then((res) => {
+        if (!isMounted) return;
+        const items = Array.isArray(res) ? res : res?.results || [];
+        setPayroll(items);
+      })
+      .catch((err) => console.warn("Payroll fetch error:", err))
+      .finally(() => { if (isMounted) setLoading(false); });
+    return () => { isMounted = false; };
+  }, []);
 
   const totalNet     = payroll.reduce((s, p) => s + (Number(p.net) || 0), 0);
   const pendingCount = payroll.filter((p) => p.status === "Pending").length;
@@ -34,7 +51,6 @@ export default function PayrollPage({ payroll, setPayroll }) {
       setPayroll((list) => list.map((p) => (p.id === id ? { ...p, status: "Paid" } : p)));
       toast("Payslip marked as paid");
     } catch (err) {
-      // Fallback to local-only if API fails
       setPayroll((list) => list.map((p) => (p.id === id ? { ...p, status: "Paid" } : p)));
       toast("Payslip marked as paid (offline)");
     }
@@ -94,7 +110,6 @@ export default function PayrollPage({ payroll, setPayroll }) {
     try {
       const res = await generatePayroll(monthStr);
       toast(res.detail || "Payroll generated!");
-      // Refresh payroll list from backend
       const fresh = await fetchPayroll();
       const items = Array.isArray(fresh) ? fresh : (fresh?.results || []);
       setPayroll(items);
@@ -107,12 +122,11 @@ export default function PayrollPage({ payroll, setPayroll }) {
     }
   }
 
-  // Salary distribution by range
   const ranges = [
-    { label: "< 40k",    min: 0,     max: 40000  },
-    { label: "40-60k",   min: 40000, max: 60000  },
-    { label: "60-80k",   min: 60000, max: 80000  },
-    { label: "80-100k",  min: 80000, max: 100000 },
+    { label: "< 40k",    min: 0,      max: 40000   },
+    { label: "40-60k",   min: 40000,  max: 60000   },
+    { label: "60-80k",   min: 60000,  max: 80000   },
+    { label: "80-100k",  min: 80000,  max: 100000  },
     { label: "> 100k",   min: 100000, max: Infinity },
   ];
   const distData = ranges.map((r) => ({
@@ -137,6 +151,14 @@ export default function PayrollPage({ payroll, setPayroll }) {
     width: "100%",
     transition: "border-color 0.2s",
   };
+
+  if (loading) {
+    return (
+      <div style={{ padding: 40, textAlign: "center", color: C.slate, fontFamily: "Inter, sans-serif" }}>
+        Loading payroll data...
+      </div>
+    );
+  }
 
   return (
     <div className="page-enter">
@@ -246,54 +268,19 @@ export default function PayrollPage({ payroll, setPayroll }) {
               <div style={{ color: C.slate, fontSize: 13 }}>{edit.department} · {edit.month}</div>
             </div>
           </div>
-
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            {/* Basic Pay */}
             <div>
-              <label style={{ fontFamily: "Inter, sans-serif", fontSize: 12, fontWeight: 600, color: C.slate, marginBottom: 6, display: "block" }}>
-                Basic Pay (₹)
-              </label>
-              <input
-                type="number"
-                value={edit.basic}
-                onChange={(e) => handleEditChange("basic", e.target.value)}
-                style={inputStyle}
-                onFocus={(e) => e.target.style.borderColor = C.teal}
-                onBlur={(e) => e.target.style.borderColor = C.border}
-              />
+              <label style={{ fontFamily: "Inter, sans-serif", fontSize: 12, fontWeight: 600, color: C.slate, marginBottom: 6, display: "block" }}>Basic Pay (₹)</label>
+              <input type="number" value={edit.basic} onChange={(e) => handleEditChange("basic", e.target.value)} style={inputStyle} onFocus={(e) => e.target.style.borderColor = C.teal} onBlur={(e) => e.target.style.borderColor = C.border} />
             </div>
-
-            {/* Allowances */}
             <div>
-              <label style={{ fontFamily: "Inter, sans-serif", fontSize: 12, fontWeight: 600, color: C.slate, marginBottom: 6, display: "block" }}>
-                Allowances (₹)
-              </label>
-              <input
-                type="number"
-                value={edit.allowances}
-                onChange={(e) => handleEditChange("allowances", e.target.value)}
-                style={inputStyle}
-                onFocus={(e) => e.target.style.borderColor = C.teal}
-                onBlur={(e) => e.target.style.borderColor = C.border}
-              />
+              <label style={{ fontFamily: "Inter, sans-serif", fontSize: 12, fontWeight: 600, color: C.slate, marginBottom: 6, display: "block" }}>Allowances (₹)</label>
+              <input type="number" value={edit.allowances} onChange={(e) => handleEditChange("allowances", e.target.value)} style={inputStyle} onFocus={(e) => e.target.style.borderColor = C.teal} onBlur={(e) => e.target.style.borderColor = C.border} />
             </div>
-
-            {/* Deductions */}
             <div>
-              <label style={{ fontFamily: "Inter, sans-serif", fontSize: 12, fontWeight: 600, color: C.slate, marginBottom: 6, display: "block" }}>
-                Deductions (₹)
-              </label>
-              <input
-                type="number"
-                value={edit.deductions}
-                onChange={(e) => handleEditChange("deductions", e.target.value)}
-                style={inputStyle}
-                onFocus={(e) => e.target.style.borderColor = C.coral}
-                onBlur={(e) => e.target.style.borderColor = C.border}
-              />
+              <label style={{ fontFamily: "Inter, sans-serif", fontSize: 12, fontWeight: 600, color: C.slate, marginBottom: 6, display: "block" }}>Deductions (₹)</label>
+              <input type="number" value={edit.deductions} onChange={(e) => handleEditChange("deductions", e.target.value)} style={inputStyle} onFocus={(e) => e.target.style.borderColor = C.coral} onBlur={(e) => e.target.style.borderColor = C.border} />
             </div>
-
-            {/* Net Pay (auto-calculated, read-only) */}
             <div style={{ background: `${C.teal}10`, border: `1px solid ${C.teal}30`, borderRadius: 10, padding: "14px 16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <span style={{ fontFamily: "Sora, sans-serif", fontWeight: 700, fontSize: 14, color: C.ink }}>Net Pay</span>
               <span style={{ fontFamily: "Sora, sans-serif", fontWeight: 700, fontSize: 20, color: C.teal }}>{fmtMoney(edit.net)}</span>
@@ -302,12 +289,9 @@ export default function PayrollPage({ payroll, setPayroll }) {
               Net Pay = Basic + Allowances − Deductions (auto-calculated)
             </div>
           </div>
-
           <div style={{ display: "flex", gap: 10, marginTop: 22, justifyContent: "flex-end" }}>
             <Button variant="ghost" onClick={() => setEdit(null)}>Cancel</Button>
-            <Button variant="teal" onClick={saveEdit} disabled={saving}>
-              {saving ? "Saving..." : "Save Changes"}
-            </Button>
+            <Button variant="teal" onClick={saveEdit} disabled={saving}>{saving ? "Saving..." : "Save Changes"}</Button>
           </div>
         </Modal>
       )}
@@ -329,21 +313,13 @@ export default function PayrollPage({ payroll, setPayroll }) {
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 20 }}>
             <div>
               <label style={{ fontFamily: "Inter, sans-serif", fontSize: 12, fontWeight: 600, color: C.slate, marginBottom: 6, display: "block" }}>Month</label>
-              <select
-                value={genMonth}
-                onChange={(e) => setGenMonth(e.target.value)}
-                style={{ ...inputStyle, cursor: "pointer" }}
-              >
+              <select value={genMonth} onChange={(e) => setGenMonth(e.target.value)} style={{ ...inputStyle, cursor: "pointer" }}>
                 {MONTHS.map((m) => <option key={m} value={m}>{m}</option>)}
               </select>
             </div>
             <div>
               <label style={{ fontFamily: "Inter, sans-serif", fontSize: 12, fontWeight: 600, color: C.slate, marginBottom: 6, display: "block" }}>Year</label>
-              <select
-                value={genYear}
-                onChange={(e) => setGenYear(e.target.value)}
-                style={{ ...inputStyle, cursor: "pointer" }}
-              >
+              <select value={genYear} onChange={(e) => setGenYear(e.target.value)} style={{ ...inputStyle, cursor: "pointer" }}>
                 {YEARS.map((y) => <option key={y} value={y}>{y}</option>)}
               </select>
             </div>

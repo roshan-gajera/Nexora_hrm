@@ -1,14 +1,39 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Clock } from "lucide-react";
 import { C } from "../constants/theme";
 import { statusTone } from "../utils/helpers";
 import { Card, PageHeader, Table, Avatar, Pill } from "../components/ui";
+import { fetchAttendance } from "../api/attendanceApi";
 
-export default function AttendancePage({ attendance }) {
+export default function AttendancePage() {
+  const [attendance, setAttendance] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("All");
+
+  useEffect(() => {
+    let isMounted = true;
+    setLoading(true);
+    fetchAttendance()
+      .then((res) => {
+        if (!isMounted) return;
+        const items = Array.isArray(res) ? res : res?.results || [];
+        setAttendance(items);
+      })
+      .catch((err) => console.warn("Attendance fetch error:", err))
+      .finally(() => { if (isMounted) setLoading(false); });
+    return () => { isMounted = false; };
+  }, []);
 
   const counts   = ["Present", "Late", "WFH", "Absent"].map((s) => ({ status: s, count: attendance.filter((a) => a.status === s).length }));
   const filtered = filter === "All" ? attendance : attendance.filter((a) => a.status === filter);
+
+  if (loading) {
+    return (
+      <div style={{ padding: 40, textAlign: "center", color: C.slate, fontFamily: "Inter, sans-serif" }}>
+        Loading attendance data...
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -32,11 +57,12 @@ export default function AttendancePage({ attendance }) {
           ))}
         </div>
         <Table
-          columns={["Employee", "Department", "Check-in", "Check-out", "Status"]}
+          columns={["Employee", "Id", "Department", "Check-in", "Check-out", "Status"]}
           rows={filtered}
           renderRow={(a) => (
-            <tr key={a.employeeId} style={{ borderBottom: `1px solid ${C.border}` }}>
+            <tr key={a.employeeId} className="hoverable" style={{ borderBottom: `1px solid ${C.border}` }}>
               <td style={{ padding: "11px 14px", display: "flex", alignItems: "center", gap: 8 }}><Avatar name={a.name} size={28} />{a.name}</td>
+              <td style={{ padding: "11px 14px"}}>{a.employeeId}</td>
               <td style={{ padding: "11px 14px", color: C.slate }}>{a.department}</td>
               <td style={{ padding: "11px 14px", color: C.slate, display: "flex", alignItems: "center", gap: 6 }}><Clock size={13} />{a.checkIn}</td>
               <td style={{ padding: "11px 14px", color: C.slate }}>{a.checkOut}</td>
