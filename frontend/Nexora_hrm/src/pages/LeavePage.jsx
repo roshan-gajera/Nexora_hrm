@@ -21,11 +21,11 @@ function LeaveForm({ employees, onSave, onCancel }) {
 
   return (
     <form onSubmit={(e) => { e.preventDefault(); onSave(form); }}>
-      <Select label="Employee"   value={form.employeeId} onChange={(e) => set("employeeId", e.target.value)} options={employees.map((e) => e.id)} />
-      <Select label="Leave type" value={form.type}       onChange={(e) => set("type", e.target.value)} options={LEAVE_TYPES} />
+      <Select label="Employee" value={form.employeeId} onChange={(e) => set("employeeId", e.target.value)} options={employees.map((e) => e.id)} />
+      <Select label="Leave type" value={form.type} onChange={(e) => set("type", e.target.value)} options={LEAVE_TYPES} />
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
         <Input label="From" type="date" value={form.from} onChange={(e) => set("from", e.target.value)} />
-        <Input label="To"   type="date" value={form.to}   onChange={(e) => set("to",   e.target.value)} />
+        <Input label="To" type="date" value={form.to} onChange={(e) => set("to", e.target.value)} />
       </div>
       <Input label="Reason" value={form.reason} onChange={(e) => set("reason", e.target.value)} placeholder="Brief reason for leave" />
       <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 8 }}>
@@ -38,13 +38,13 @@ function LeaveForm({ employees, onSave, onCancel }) {
 
 export default function LeavePage() {
   const toast = useToast();
-  const [leaves,    setLeaves]    = useState([]);
+  const [leaves, setLeaves] = useState([]);
   const [employees, setEmployees] = useState([]);
-  const [loading,   setLoading]   = useState(true);
-  const [tab,       setTab]       = useState("All");
-  const [showForm,  setShowForm]  = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [tab, setTab] = useState("All");
+  const [showForm, setShowForm] = useState(false);
 
-  const tabs     = ["All", "Pending", "Approved", "Rejected"];
+  const tabs = ["All", "Pending", "Approved", "Rejected"];
   const filtered = tab === "All" ? leaves : leaves.filter((l) => l.status === tab);
 
   // Load leaves and employees on mount

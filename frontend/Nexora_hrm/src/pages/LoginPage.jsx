@@ -4,8 +4,8 @@ import { Input } from "../components/ui";
 import { loginApi } from "../api/auth";
 
 export default function LoginPage({ onLogin, onNavigateSignup }) {
-  const [email,    setEmail]    = useState("admin@nexorahrm.com");
-  const [password, setPassword] = useState("admin123");
+  const [email,    setEmail]    = useState("");
+  const [password, setPassword] = useState("");
   const [error,    setError]    = useState("");
   const [loading,  setLoading]  = useState(false);
 
@@ -21,12 +21,10 @@ export default function LoginPage({ onLogin, onNavigateSignup }) {
       onLogin(res.user);
     } catch (err) {
       setLoading(false);
-      // Fallback mode if dev backend server is temporarily unreached or invalid demo login
-      if (err.message && err.message.includes("401")) {
-        setError("Invalid email or password. Use admin@nexorahrm.com / admin123");
+      if (err.status === 401) {
+        setError("Invalid email or password.");
       } else {
-        // Dev fallback if offline
-        onLogin({ email, first_name: "Admin", last_name: "User" });
+        setError("Unable to connect to the server. Please try again.");
       }
     }
   }
@@ -47,8 +45,8 @@ export default function LoginPage({ onLogin, onNavigateSignup }) {
           <p style={{ color: C.slate, fontSize: 13.5, margin: "0 0 26px" }}>Sign in to manage your workforce.</p>
 
           <form onSubmit={submit}>
-            <Input label="Work email"  type="email"    value={email}    onChange={(e) => setEmail(e.target.value)}    placeholder="you@company.com" />
-            <Input label="Password"    type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Enter password" />
+            <Input label="Work email"  type="email"    value={email}    onChange={(e) => setEmail(e.target.value)}    placeholder="work@gmail.com" />
+            <Input label="Password"    type="text" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Enter Your Password" />
             {error && <p style={{ color: C.coral, fontSize: 12.5, marginTop: -6, marginBottom: 14 }}>{error}</p>}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
               <label style={{ fontSize: 12.5, color: C.slate, display: "flex", gap: 6, alignItems: "center" }}>

@@ -3,7 +3,7 @@ import { Search, Bell, ChevronDown } from "lucide-react";
 import { C } from "../../constants/theme";
 import { Avatar } from "../ui";
 
-export default function TopBar({ onMenu, currentUser, employees = [], setPage }) {
+export default function TopBar({ onMenu, currentUser, userRole, employees = [], setPage }) {
   const [query,       setQuery]       = useState("");
   const [showResults, setShowResults] = useState(false);
   const [showNotifs,  setShowNotifs]  = useState(false);
@@ -107,7 +107,9 @@ export default function TopBar({ onMenu, currentUser, employees = [], setPage })
           <Avatar name={currentUser} size={32} />
           <div style={{ lineHeight: 1.2 }}>
             <div style={{ fontFamily: "Inter, sans-serif", fontWeight: 600, fontSize: 13, color: C.ink }}>{currentUser}</div>
-            <div style={{ fontFamily: "Inter, sans-serif", fontSize: 11, color: C.slateLight }}>HR Administrator</div>
+            <div style={{ fontFamily: "Inter, sans-serif", fontSize: 11, color: C.slateLight, textTransform: "capitalize" }}>
+              {userRole === "employee" ? "Employee" : userRole || "HR Administrator"}
+            </div>
           </div>
           <ChevronDown size={14} color={C.slateLight} />
         </div>

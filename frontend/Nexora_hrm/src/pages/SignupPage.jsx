@@ -59,7 +59,7 @@ export default function SignupPage({ onSignup, onNavigateLogin }) {
               </div>
             </div>
             <Input label="Work email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@company.com" />
-            <Input label="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Enter password (min 8 characters)" />
+            <Input label="Password" type="text" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Enter password (min 8 characters)" />
             {error && <p style={{ color: C.coral, fontSize: 12.5, marginTop: -6, marginBottom: 14 }}>{error}</p>}
             
             <button type="submit" disabled={loading} style={{ width: "100%", background: C.ink, color: "#fff", border: "none", padding: "11px 0", borderRadius: 8, fontFamily: "Sora, sans-serif", fontWeight: 700, fontSize: 14.5, cursor: loading ? "wait" : "pointer", opacity: loading ? 0.7 : 1, marginBottom: 18 }}>
@@ -67,11 +67,8 @@ export default function SignupPage({ onSignup, onNavigateLogin }) {
             </button>
           </form>
           
-          <p style={{ fontSize: 13.5, color: C.slate, textAlign: "center" }}>
-            Already have an account?{" "}
-            <span onClick={onNavigateLogin} style={{ color: C.teal, fontWeight: 600, cursor: "pointer" }}>
-              Sign in
-            </span>
+          <p style={{ fontSize: 13.5, color: C.slate, textAlign: "center" }}>Already have an account?{" "}
+            <span onClick={onNavigateLogin} style={{ color: C.teal, fontWeight: 600, cursor: "pointer" }}>Sign in</span>
           </p>
         </div>
       </div>
@@ -82,9 +79,7 @@ export default function SignupPage({ onSignup, onNavigateLogin }) {
         <div style={{ position: "absolute", width: 220, height: 220, borderRadius: "50%", border: "1px solid rgba(31,138,112,0.35)", bottom: -40, left: -20 }} />
         <div style={{ maxWidth: 380, padding: 40, position: "relative" }}>
           <p style={{ color: C.teal, fontFamily: "IBM Plex Mono, monospace", fontSize: 12.5, letterSpacing: 1, marginBottom: 14 }}>JOIN NEXORA</p>
-          <h2 style={{ color: "#fff", fontFamily: "Sora, sans-serif", fontSize: 28, fontWeight: 700, lineHeight: 1.3 }}>
-            Start managing your workforce better today.
-          </h2>
+          <h2 style={{ color: "#fff", fontFamily: "Sora, sans-serif", fontSize: 28, fontWeight: 700, lineHeight: 1.3 }}>Start managing your workforce better today.</h2>
         </div>
       </div>
     </div>

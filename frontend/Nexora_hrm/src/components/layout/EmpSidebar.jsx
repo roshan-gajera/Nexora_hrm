@@ -1,15 +1,9 @@
 import React from "react";
-import { LogOut, ChevronLeft, ChevronRight, UserCheck, Shield } from "lucide-react";
-import { C, NAV, EMP_NAV } from "../../constants/theme";
+import { LogOut, ChevronLeft, ChevronRight } from "lucide-react";
+import { C, EMP_NAV } from "../../constants/theme";
 
-export default function Sidebar({ page, setPage, open, onToggle, onLogout, user }) {
+export default function EmpSidebar({ page, setPage, open, onToggle, onLogout }) {
   const W = open ? 224 : 64;
-
-  const isEmpRole = user?.role === "employee";
-  const isEmpPage = page.startsWith("emp-");
-  const isEmpMode = isEmpPage || isEmpRole;
-
-  const currentNav = isEmpMode ? EMP_NAV : NAV;
 
   return (
     <div style={{ width: W, minWidth: W, background: C.ink, height: "100vh", position: "sticky", top: 0, display: "flex", flexDirection: "column", flexShrink: 0, transition: "width 0.22s ease", overflow: "hidden" }}>
@@ -19,19 +13,12 @@ export default function Sidebar({ page, setPage, open, onToggle, onLogout, user 
         <div style={{ width: 30, height: 30, borderRadius: 7, background: "rgba(255,255,255,0.08)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
           <span style={{ color: C.teal, fontFamily: "Sora, sans-serif", fontWeight: 800, fontSize: 14 }}>N</span>
         </div>
-        {open && (
-          <div style={{ display: "flex", flexDirection: "column" }}>
-            <span style={{ fontFamily: "Sora, sans-serif", fontWeight: 700, fontSize: 15, color: "#fff", lineHeight: 1.2 }}>Nexora HRM</span>
-            <span style={{ fontFamily: "Inter, sans-serif", fontSize: 10.5, color: C.teal, fontWeight: 600, letterSpacing: 0.5 }}>
-              {isEmpMode ? "EMPLOYEE PORTAL" : "ADMIN PORTAL"}
-            </span>
-          </div>
-        )}
+        {open && <span style={{ fontFamily: "Sora, sans-serif", fontWeight: 700, fontSize: 16, color: "#fff" }}>My Portal</span>}
       </div>
 
       {/* Nav items */}
       <div style={{ flex: 1, padding: "10px 10px", display: "flex", flexDirection: "column", gap: 2, overflowY: "auto" }}>
-        {currentNav.map((item) => {
+        {EMP_NAV.map((item) => {
           const Icon   = item.icon;
           const active = page === item.key;
           return (
@@ -50,18 +37,6 @@ export default function Sidebar({ page, setPage, open, onToggle, onLogout, user 
 
       {/* Footer */}
       <div style={{ padding: "12px 10px", borderTop: "1px solid rgba(255,255,255,0.08)", display: "flex", flexDirection: "column", gap: 6 }}>
-        {/* Admin/HR Switch Portal button */}
-        {!isEmpRole && (
-          <div
-            onClick={() => setPage(isEmpMode ? "dashboard" : "emp-dashboard")}
-            title={open ? "Switch View" : isEmpMode ? "Admin Portal" : "Employee Portal"}
-            style={{ display: "flex", alignItems: "center", gap: 10, color: C.teal, background: "rgba(31,138,112,0.12)", cursor: "pointer", padding: "7px 10px", borderRadius: 7, fontFamily: "Inter, sans-serif", fontSize: 12.5, fontWeight: 600 }}
-          >
-            {isEmpMode ? <Shield size={16} style={{ flexShrink: 0 }} /> : <UserCheck size={16} style={{ flexShrink: 0 }} />}
-            {open && (isEmpMode ? "Switch to Admin" : "Employee Portal")}
-          </div>
-        )}
-
         <div
           onClick={onToggle}
           title={open ? "Collapse" : "Expand"}

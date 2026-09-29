@@ -6,6 +6,8 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from subscriptions.permissions import HasActiveSubscription
+
 from .models import (
     Announcement, Asset, Attendance, Candidate, Department, Designation,
     Employee, Expense, Holiday, Job, LeaveBalance, LeaveRequest, LeaveType,
@@ -32,6 +34,7 @@ class DepartmentViewSet(viewsets.ModelViewSet):
     search_fields    = ["name", "head"]
     ordering_fields  = ["name"]
 
+    permission_classes = [IsAuthenticated,HasActiveSubscription]
 
 # ── Designation ───────────────────────────────────────────────────────────────
 
@@ -41,6 +44,7 @@ class DesignationViewSet(viewsets.ModelViewSet):
     filterset_fields = ["department"]
     search_fields    = ["title"]
 
+    permission_classes = [IsAuthenticated,HasActiveSubscription]
 
 # ── Shift ─────────────────────────────────────────────────────────────────────
 
@@ -48,6 +52,7 @@ class ShiftViewSet(viewsets.ModelViewSet):
     queryset         = Shift.objects.all()
     serializer_class = ShiftSerializer
 
+    permission_classes = [IsAuthenticated,HasActiveSubscription]
 
 # ── Employee ──────────────────────────────────────────────────────────────────
 
@@ -72,6 +77,8 @@ class EmployeeViewSet(viewsets.ModelViewSet):
         emp.save(update_fields=["status"])
         return Response({"detail": "Employee deactivated."})
 
+    permission_classes = [IsAuthenticated,HasActiveSubscription]
+
 
 # ── Holiday ───────────────────────────────────────────────────────────────────
 
@@ -81,6 +88,9 @@ class HolidayViewSet(viewsets.ModelViewSet):
     filterset_fields = ["type"]
     ordering_fields  = ["date"]
 
+    permission_classes = [IsAuthenticated,HasActiveSubscription]
+
+
 
 # ── Leave ─────────────────────────────────────────────────────────────────────
 
@@ -88,11 +98,14 @@ class LeaveTypeViewSet(viewsets.ModelViewSet):
     queryset         = LeaveType.objects.all()
     serializer_class = LeaveTypeSerializer
 
+    permission_classes = [IsAuthenticated,HasActiveSubscription]
 
 class LeaveBalanceViewSet(viewsets.ModelViewSet):
     queryset         = LeaveBalance.objects.select_related("employee", "leave_type").all()
     serializer_class = LeaveBalanceSerializer
     filterset_fields = ["employee", "leave_type", "year"]
+
+    permission_classes = [IsAuthenticated,HasActiveSubscription]
 
 
 class LeaveRequestViewSet(viewsets.ModelViewSet):
@@ -122,6 +135,7 @@ class LeaveRequestViewSet(viewsets.ModelViewSet):
         leave.save(update_fields=["status"])
         return Response(LeaveRequestSerializer(leave).data)
 
+    permission_classes = [IsAuthenticated,HasActiveSubscription]
 
 # ── Attendance ────────────────────────────────────────────────────────────────
 
@@ -147,6 +161,9 @@ class AttendanceViewSet(viewsets.ModelViewSet):
         data = qs.values("status").annotate(count=Count("id"))
         total_active = Employee.objects.filter(status=Employee.Status.ACTIVE).count()
         return Response({"date": date, "total_active": total_active, "breakdown": list(data)})
+
+
+    permission_classes = [IsAuthenticated,HasActiveSubscription]
 
 
 # ── Payroll ───────────────────────────────────────────────────────────────────
@@ -255,7 +272,7 @@ class PayrollViewSet(viewsets.ModelViewSet):
             "records": results,
         })
 
-
+    permission_classes = [IsAuthenticated,HasActiveSubscription]
 
 # ── Overtime ──────────────────────────────────────────────────────────────────
 
@@ -279,6 +296,7 @@ class OvertimeViewSet(viewsets.ModelViewSet):
         obj.save(update_fields=["status"])
         return Response(OvertimeSerializer(obj).data)
 
+    permission_classes = [IsAuthenticated,HasActiveSubscription]
 
 # ── Expense ───────────────────────────────────────────────────────────────────
 
@@ -302,6 +320,8 @@ class ExpenseViewSet(viewsets.ModelViewSet):
         obj.save(update_fields=["status"])
         return Response(ExpenseSerializer(obj).data)
 
+    permission_classes = [IsAuthenticated,HasActiveSubscription]
+
 
 # ── Recruitment ───────────────────────────────────────────────────────────────
 
@@ -320,6 +340,8 @@ class JobViewSet(viewsets.ModelViewSet):
         job.status = Job.Status.CLOSED
         job.save(update_fields=["status"])
         return Response({"detail": "Job closed."})
+
+    permission_classes = [IsAuthenticated,HasActiveSubscription]
 
 
 class CandidateViewSet(viewsets.ModelViewSet):
@@ -342,6 +364,8 @@ class CandidateViewSet(viewsets.ModelViewSet):
         candidate.save(update_fields=["stage"])
         return Response(CandidateSerializer(candidate).data)
 
+    permission_classes = [IsAuthenticated,HasActiveSubscription]
+
 
 # ── Performance ───────────────────────────────────────────────────────────────
 
@@ -361,6 +385,7 @@ class PerformanceReviewViewSet(viewsets.ModelViewSet):
         review.save(update_fields=["status"])
         return Response(PerformanceReviewSerializer(review).data)
 
+    permission_classes = [IsAuthenticated,HasActiveSubscription]
 
 # ── Training ──────────────────────────────────────────────────────────────────
 
@@ -371,11 +396,15 @@ class TrainingViewSet(viewsets.ModelViewSet):
     search_fields    = ["title", "trainer"]
     ordering_fields  = ["start_date"]
 
+    permission_classes = [IsAuthenticated,HasActiveSubscription]
+
 
 class TrainingEnrollmentViewSet(viewsets.ModelViewSet):
     queryset         = TrainingEnrollment.objects.select_related("training", "employee").all()
     serializer_class = TrainingEnrollmentSerializer
     filterset_fields = ["training", "employee", "completed"]
+
+    permission_classes = [IsAuthenticated,HasActiveSubscription]
 
 
 # ── Asset ─────────────────────────────────────────────────────────────────────
@@ -407,6 +436,8 @@ class AssetViewSet(viewsets.ModelViewSet):
         asset.save(update_fields=["assigned_to", "status"])
         return Response(AssetSerializer(asset).data)
 
+    permission_classes = [IsAuthenticated,HasActiveSubscription]
+
 
 # ── Announcement ──────────────────────────────────────────────────────────────
 
@@ -415,6 +446,8 @@ class AnnouncementViewSet(viewsets.ModelViewSet):
     serializer_class = AnnouncementSerializer
     filterset_fields = ["priority", "is_active"]
     ordering_fields  = ["created_at"]
+
+    permission_classes = [IsAuthenticated,HasActiveSubscription]
 
 
 # ── Dashboard ─────────────────────────────────────────────────────────────────
@@ -459,6 +492,8 @@ class DashboardStatsView(APIView):
             "dept_breakdown":   list(dept_breakdown),
             "headcount_trend":  headcount_trend,
         })
+
+    permission_classes = [IsAuthenticated,HasActiveSubscription]
 
 
 # ── Health ────────────────────────────────────────────────────────────────────

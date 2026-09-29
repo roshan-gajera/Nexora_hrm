@@ -1,6 +1,7 @@
 import {
   LayoutDashboard, Users, CalendarCheck, CalendarDays,
-  Wallet, Building2, Briefcase, Star, Settings,
+  Wallet, Building2, Briefcase, Star, Settings, CreditCard,
+  FileText,
 } from "lucide-react";
 
 export const C = {
@@ -32,6 +33,7 @@ export const AVATAR_PALETTE = [
 
 export const NAV = [
   { key: "dashboard",   label: "Dashboard",   icon: LayoutDashboard },
+  { key: "subscription", label: "Subscription", icon: CreditCard},
   { key: "employees",   label: "Employees",   icon: Users },
   { key: "attendance",  label: "Attendance",  icon: CalendarCheck },
   { key: "leave",       label: "Leave",       icon: CalendarDays },
@@ -40,4 +42,10 @@ export const NAV = [
   { key: "recruitment", label: "Recruitment", icon: Briefcase },
   { key: "performance", label: "Performance", icon: Star },
   { key: "settings",    label: "Settings",    icon: Settings },
+];
+
+export const EMP_NAV = [
+  { key: "emp-dashboard", label: "Dashboard",   icon: LayoutDashboard },
+  { key: "emp-leave",     label: "My Leaves",   icon: CalendarDays },
+  { key: "emp-payslips",  label: "My Payslips", icon: FileText },
 ];

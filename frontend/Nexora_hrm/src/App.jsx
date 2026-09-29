@@ -26,6 +26,11 @@ import DepartmentsPage  from "./pages/DepartmentsPage";
 import RecruitmentPage  from "./pages/RecruitmentPage";
 import PerformancePage  from "./pages/PerformancePage";
 import SettingsPage   from "./pages/SettingsPage";
+import SubscriptionPage from "./pages/SubscriptionPage";
+
+import EmpDashboardPage from "./pages/EmpDashboardPage";
+import EmpLeavePage     from "./pages/EmpLeavePage";
+import EmpPayslipsPage  from "./pages/EmpPayslipsPage";
 
 function useFonts() {
   useEffect(() => {
@@ -57,7 +62,7 @@ function AppShell() {
    * Get current page from browser URL.
    * Example: /dashboard -> dashboard
    */
-  const page = location.pathname.split("/")[1] || "dashboard";
+  const page = location.pathname.split("/")[1] || (user?.role === "employee" ? "emp-dashboard" : "dashboard");
 
   /*
    * Replaces old useState-based setPage().
@@ -69,9 +74,14 @@ function AppShell() {
 
   /* LOGIN */
   const handleLogin = (userData) => {
-    setUser(userData || getCurrentStoredUser());
+    const loggedUser = userData || getCurrentStoredUser();
+    setUser(loggedUser);
     setAuthed(true);
-    navigate("/dashboard");
+    if (loggedUser?.role === "employee") {
+      navigate("/emp-dashboard");
+    } else {
+      navigate("/dashboard");
+    }
   };
 
   /* LOGOUT */
@@ -113,6 +123,8 @@ function AppShell() {
     ? `${user.first_name || ""} ${user.last_name || ""}`.trim() || user.email
     : "Priya Nair";
 
+  const defaultRoute = user?.role === "employee" ? "/emp-dashboard" : "/dashboard";
+
   return (
     <div style={{ display: "flex", background: C.canvas, minHeight: "100vh" }}>
       {/* SIDEBAR */}
@@ -122,6 +134,7 @@ function AppShell() {
         open={sidebarOpen}
         onToggle={() => setSidebarOpen((o) => !o)}
         onLogout={handleLogout}
+        user={user}
       />
 
       {/* MAIN CONTENT */}
@@ -130,6 +143,7 @@ function AppShell() {
         <TopBar
           onMenu={() => setSidebarOpen((o) => !o)}
           currentUser={currentUserName}
+          userRole={user?.role}
           setPage={setPage}
         />
 
@@ -139,32 +153,27 @@ function AppShell() {
 
             {/* DASHBOARD */}
             <Route
-              path="/dashboard"
-              element={<DashboardPage setPage={setPage} />}
+              path="/dashboard" element={<DashboardPage setPage={setPage} />}
             />
 
             {/* EMPLOYEES */}
             <Route
-              path="/employees"
-              element={<EmployeesPage />}
+              path="/employees" element={<EmployeesPage />}
             />
 
             {/* ATTENDANCE */}
             <Route
-              path="/attendance"
-              element={<AttendancePage />}
+              path="/attendance" element={<AttendancePage />}
             />
 
             {/* LEAVE */}
             <Route
-              path="/leave"
-              element={<LeavePage />}
+              path="/leave" element={<LeavePage />}
             />
 
             {/* PAYROLL */}
             <Route
-              path="/payroll"
-              element={<PayrollPage />}
+              path="/payroll" element={<PayrollPage />}
             />
 
             {/* DEPARTMENTS */}
@@ -191,8 +200,16 @@ function AppShell() {
               element={<SettingsPage />}
             />
 
-            {/* UNKNOWN URL → redirect to dashboard */}
-            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+            {/* SUBSCRIPTION */}
+            <Route path="/subscription" element={<SubscriptionPage />} />
+
+            {/* EMPLOYEE PORTAL ROUTES */}
+            <Route path="/emp-dashboard" element={<EmpDashboardPage setPage={setPage} user={user} />} />
+            <Route path="/emp-leave" element={<EmpLeavePage user={user} />} />
+            <Route path="/emp-payslips" element={<EmpPayslipsPage user={user} />} />
+
+            {/* UNKNOWN URL -> redirect to default dashboard */}
+            <Route path="*" element={<Navigate to={defaultRoute} replace />} />
 
           </Routes>
         </div>

@@ -35,12 +35,29 @@ class LoginView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
-        s = LoginSerializer(data=request.data)
-        s.is_valid(raise_exception=True)
-        user = authenticate(request, email=s.validated_data["email"], password=s.validated_data["password"])
+        email = request.data.get("email")
+        password = request.data.get("password")
+        user = authenticate(
+            request,
+            email=email,
+            password=password
+        )
+
         if user is None:
-            return Response({"detail": "Invalid email or password."}, status=status.HTTP_401_UNAUTHORIZED)
-        return Response(_token_response(user))
+            return Response(
+                {
+                    "detail": "Invalid email or password."
+                },
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+
+        refresh = RefreshToken.for_user(user)
+
+        return Response({
+            "access": str(refresh.access_token),
+            "refresh": str(refresh),
+            "user": {"id": user.id, "email": user.email, "role": user.role, "first_name": user.first_name, "last_name": user.last_name}
+        })
 
 
 class LogoutView(APIView):

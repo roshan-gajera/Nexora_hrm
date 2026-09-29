@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Users, CalendarCheck, CalendarDays, Briefcase, Plus, Download, UserCheck } from "lucide-react";
+import { Users, CalendarCheck, CalendarDays, Briefcase, Plus, Download, UserCheck, AlertTriangle, X, CreditCard } from "lucide-react";
 import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend,
@@ -27,6 +27,8 @@ export default function DashboardPage({ setPage }) {
   const [leaves,      setLeaves]      = useState([]);
   const [attendance,  setAttendance]  = useState([]);
   const [loading,     setLoading]     = useState(true);
+  const [error,       setError]       = useState("");
+  const [apiAlert,    setApiAlert]    = useState(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -39,6 +41,26 @@ export default function DashboardPage({ setPage }) {
       fetchAttendance(),
     ]).then(([empRes, deptRes, leaveRes, attRes]) => {
       if (!isMounted) return;
+
+      // Check all results for 403 or subscription-expired errors
+      const allResults = [empRes, deptRes, leaveRes, attRes];
+      for (const res of allResults) {
+        if (res.status === "rejected") {
+          const err = res.reason;
+          const status = err?.status;
+          const msg = (err?.message || "").toLowerCase();
+          const isSubscriptionExpired = status === 403 && (msg.includes("subscription") || msg.includes("expired") || msg.includes("plan"));
+
+          if (isSubscriptionExpired) {
+            setApiAlert({ type: "subscription", message: err.message || "Your subscription has expired. Please renew to continue." });
+            break;
+          } else if (status === 403) {
+            setApiAlert({ type: "403", message: err.message || "Access denied (403 Forbidden). You do not have permission to view this data." });
+            break;
+          }
+        }
+      }
+
       if (empRes.status   === "fulfilled") setEmployees(  Array.isArray(empRes.value)   ? empRes.value   : empRes.value?.results   || []);
       if (deptRes.status  === "fulfilled") setDepartments(Array.isArray(deptRes.value)  ? deptRes.value  : deptRes.value?.results  || []);
       if (leaveRes.status === "fulfilled") setLeaves(     Array.isArray(leaveRes.value) ? leaveRes.value : leaveRes.value?.results || []);
@@ -74,8 +96,104 @@ export default function DashboardPage({ setPage }) {
     );
   }
 
+  const isSubscriptionAlert = apiAlert?.type === "subscription";
+
   return (
     <div className="page-enter">
+      {/* ── API Alert Banner ── */}
+      {apiAlert && (
+        <div
+          role="alert"
+          style={{
+            display: "flex",
+            alignItems: "flex-start",
+            gap: 12,
+            padding: "14px 18px",
+            marginBottom: 20,
+            borderRadius: 12,
+            border: `1.5px solid ${isSubscriptionAlert ? C.amber : C.coral}`,
+            background: isSubscriptionAlert ? C.amberSoft : C.coralSoft,
+            animation: "slideDown 0.3s ease",
+          }}
+        >
+          {/* Icon */}
+          <div style={{
+            flexShrink: 0,
+            width: 36,
+            height: 36,
+            borderRadius: 8,
+            background: isSubscriptionAlert ? "#FBD97040" : "#F0806040",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}>
+            {isSubscriptionAlert
+              ? <CreditCard size={18} color={C.amber} />
+              : <AlertTriangle size={18} color={C.coral} />}
+          </div>
+
+          {/* Text */}
+          <div style={{ flex: 1 }}>
+            <p style={{
+              margin: 0,
+              fontFamily: "Sora, sans-serif",
+              fontWeight: 700,
+              fontSize: 13.5,
+              color: isSubscriptionAlert ? C.amber : C.coral,
+            }}>
+              {isSubscriptionAlert ? "Subscription Expired" : "Access Denied (403 Forbidden)"}
+            </p>
+            <p style={{
+              margin: "3px 0 0",
+              fontFamily: "Inter, sans-serif",
+              fontSize: 13,
+              color: C.ink,
+              opacity: 0.8,
+            }}>
+              {apiAlert.message}
+            </p>
+            {isSubscriptionAlert && (
+              <button
+                onClick={() => setPage("subscription")}
+                style={{
+                  marginTop: 8,
+                  padding: "5px 14px",
+                  borderRadius: 6,
+                  border: "none",
+                  background: C.amber,
+                  color: "#fff",
+                  fontFamily: "Inter, sans-serif",
+                  fontWeight: 600,
+                  fontSize: 12.5,
+                  cursor: "pointer",
+                }}
+              >
+                Renew Subscription →
+              </button>
+            )}
+          </div>
+
+          {/* Dismiss */}
+          <button
+            onClick={() => setApiAlert(null)}
+            title="Dismiss"
+            style={{
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              padding: 4,
+              borderRadius: 4,
+              display: "flex",
+              alignItems: "center",
+              color: C.slate,
+              flexShrink: 0,
+            }}
+          >
+            <X size={16} />
+          </button>
+        </div>
+      )}
+
       <PageHeader
         title="Dashboard"
         subtitle={today}
