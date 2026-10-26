@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Download, Wallet, FileText, Eye, Calendar } from "lucide-react";
+import { Download, Wallet, FileText, Eye, Calendar, RefreshCw } from "lucide-react";
 import { C } from "../constants/theme";
 import { fmtMoney, statusTone } from "../utils/helpers";
 import { Card, PageHeader, Button, Table, Modal, Pill, EmptyState } from "../components/ui";
@@ -8,20 +8,51 @@ import { fetchMyPayslips } from "../api/employeePortalApi";
 export default function EmpPayslipsPage() {
   const [payslips, setPayslips] = useState([]);
   const [loading,  setLoading]  = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [detail,   setDetail]   = useState(null);
+
+  const loadData = () => {
+    return fetchMyPayslips()
+      .then((data) => {
+        setPayslips(Array.isArray(data) ? data : data?.results || []);
+      })
+      .catch((err) => console.warn("Fetch payslips err:", err));
+  };
 
   useEffect(() => {
     let mounted = true;
     setLoading(true);
-    fetchMyPayslips()
-      .then((data) => {
-        if (!mounted) return;
-        setPayslips(Array.isArray(data) ? data : data?.results || []);
-      })
-      .catch(() => {})
-      .finally(() => { if (mounted) setLoading(false); });
+    loadData().finally(() => { if (mounted) setLoading(false); });
     return () => { mounted = false; };
   }, []);
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await loadData();
+    setRefreshing(false);
+  };
+
+  function downloadPayslip(p) {
+    const csvContent =
+      "data:text/csv;charset=utf-8," +
+      `Employee Payslip - ${p.month}\n` +
+      `Employee,${p.name || ""}\n` +
+      `Employee ID,${p.employeeId || ""}\n` +
+      `Department,${p.department || ""}\n` +
+      `Month,${p.month}\n` +
+      `Basic Salary,${p.basic || 0}\n` +
+      `Allowances,${p.allowances || 0}\n` +
+      `Deductions,${p.deductions || 0}\n` +
+      `Net Salary,${p.net || p.net_salary || 0}\n` +
+      `Status,${p.status}\n`;
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `Payslip_${(p.name || "Employee").replace(/\\s+/g, "_")}_${(p.month || "Month").replace(/\\s+/g, "_")}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
 
   const totalEarned = payslips
     .filter((p) => p.status === "Paid")
@@ -44,6 +75,11 @@ export default function EmpPayslipsPage() {
       <PageHeader
         title="My Payslips"
         subtitle="View and download your salary statements"
+        action={
+          <Button variant="outline" icon={RefreshCw} onClick={handleRefresh} disabled={refreshing}>
+            {refreshing ? "Refreshing..." : "Refresh"}
+          </Button>
+        }
       />
 
       {/* Overview Cards */}
@@ -131,7 +167,8 @@ export default function EmpPayslipsPage() {
                     <Eye size={14} color={C.blue} />
                   </div>
                   <div
-                    title="Download"
+                    title="Download Payslip"
+                    onClick={() => downloadPayslip(p)}
                     style={{ width: 30, height: 30, borderRadius: 7, background: C.tealSoft, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
                   >
                     <Download size={14} color={C.teal} />
@@ -147,7 +184,7 @@ export default function EmpPayslipsPage() {
       {/* Payslip Detail Modal */}
       {detail && (
         <Modal title={`Payslip — ${detail.month}`} onClose={() => setDetail(null)} width={520}>
-          <PayslipDetail payslip={detail} />
+          <PayslipDetail payslip={detail} onDownload={downloadPayslip} />
         </Modal>
       )}
     </div>
@@ -155,7 +192,7 @@ export default function EmpPayslipsPage() {
 }
 
 /* ── Payslip Detail ── */
-function PayslipDetail({ payslip }) {
+function PayslipDetail({ payslip, onDownload }) {
   const rows = [
     { label: "Basic Salary",  value: payslip.basic || 0,       type: "earning"   },
     { label: "Allowances",    value: payslip.allowances || 0,   type: "earning"   },
@@ -194,9 +231,16 @@ function PayslipDetail({ payslip }) {
         display: "flex", justifyContent: "space-between", alignItems: "center",
         padding: "16px 18px", borderRadius: 10,
         background: `linear-gradient(135deg, ${C.ink} 0%, #1E2E52 100%)`,
+        marginBottom: 16,
       }}>
         <span style={{ fontFamily: "Sora, sans-serif", fontWeight: 700, fontSize: 14, color: "rgba(255,255,255,0.8)" }}>Net Pay</span>
         <span style={{ fontFamily: "Sora, sans-serif", fontWeight: 800, fontSize: 22, color: "#fff" }}>{fmtMoney(netPay)}</span>
+      </div>
+
+      <div style={{ display: "flex", justifyContent: "flex-end" }}>
+        <Button variant="primary" icon={Download} onClick={() => onDownload && onDownload(payslip)}>
+          Download Statement
+        </Button>
       </div>
     </div>
   );

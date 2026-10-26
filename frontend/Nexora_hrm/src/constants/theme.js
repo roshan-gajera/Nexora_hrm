@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, Users, CalendarCheck, CalendarDays,
-  Wallet, Building2, Briefcase, Star, Settings, CreditCard,
+  Wallet, Building2, Briefcase, Settings, CreditCard,
   FileText,
 } from "lucide-react";
 
@@ -19,7 +19,7 @@ export const C = {
   coral:      "#C4432F",
   coralSoft:  "#FBE7E3",
   blue:       "#2A5C9A",
-  blueSoft:   "#E6EEF7",
+  blueSoft:   "#f7e6e6ff",
 };
 
 export const AVATAR_PALETTE = [
@@ -40,12 +40,12 @@ export const NAV = [
   { key: "payroll",     label: "Payroll",     icon: Wallet },
   { key: "departments", label: "Departments", icon: Building2 },
   { key: "recruitment", label: "Recruitment", icon: Briefcase },
-  { key: "performance", label: "Performance", icon: Star },
   { key: "settings",    label: "Settings",    icon: Settings },
 ];
 
 export const EMP_NAV = [
-  { key: "emp-dashboard", label: "Dashboard",   icon: LayoutDashboard },
-  { key: "emp-leave",     label: "My Leaves",   icon: CalendarDays },
-  { key: "emp-payslips",  label: "My Payslips", icon: FileText },
+  { key: "emp-dashboard",  label: "Dashboard",     icon: LayoutDashboard },
+  { key: "emp-attendance", label: "My Attendance", icon: CalendarCheck },
+  { key: "emp-leave",      label: "My Leaves",     icon: CalendarDays },
+  { key: "emp-payslips",   label: "My Payslips",   icon: FileText },
 ];

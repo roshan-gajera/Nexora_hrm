@@ -36,6 +36,27 @@ export async function fetchMyAttendance() {
   return request("/attendance/?mine=true");
 }
 
+/** Fetch today's punch in / out status for the logged-in employee */
+export async function fetchTodayAttendance() {
+  return request("/attendance/today-status/");
+}
+
+/** Punch in for today */
+export async function punchIn(data = {}) {
+  return request("/attendance/punch-in/", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+/** Punch out for today */
+export async function punchOut(data = {}) {
+  return request("/attendance/punch-out/", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
 /** Change password */
 export async function changePassword(oldPassword, newPassword) {
   return request("/auth/change-password/", {

@@ -4,7 +4,7 @@ import { Card, PageHeader, Button, Input, Select, Avatar } from "../components/u
 
 export default function SettingsPage() {
   const [tab, setTab] = useState("Company");
-  const tabs = ["Company", "Users", "Profile", "Notifications"];
+  const tabs = ["Company", "Profile", "Notifications"];
 
   return (
     <div>
@@ -20,15 +20,6 @@ export default function SettingsPage() {
 
       <Card style={{ maxWidth: 560 }}>
         {tab === "Company" && (
-          <>
-            <Input  label="Company name"  defaultValue="Nexora HRM Pvt Ltd" />
-            <Input label="Enter password" placeholder="••••••••" type="password"/>
-            <Input  label="Support email" defaultValue="hr@nexorahrm.com" />
-            <Select label="Time zone"     defaultValue="IST (UTC+5:30)" options={["IST (UTC+5:30)", "PST (UTC-8:00)", "GMT (UTC+0:00)"]} />
-            <Select label="Work week"     defaultValue="Mon – Fri"       options={["Mon – Fri", "Mon – Sat"]} />
-            <Button variant="primary">Save changes</Button>
-          </>
-        )}{tab === "Users" && (
           <>
             <Input  label="Company name"  defaultValue="Nexora HRM Pvt Ltd" />
             <Input label="Enter password" placeholder="••••••••" type="password"/>

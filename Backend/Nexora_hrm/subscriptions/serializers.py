@@ -20,7 +20,16 @@ class SubscriptionSerializer(serializers.ModelSerializer):
 
 
 class PaymentSerializer(serializers.ModelSerializer):
+    plan_name = serializers.CharField(source="subscription.name", read_only=True, default="Subscription")
 
     class Meta:
         model = Payment
-        fields = ["id","amount","payment_id","status","created_at",]
+        fields = [
+            "id",
+            "amount",
+            "payment_id",
+            "payment_method",
+            "status",
+            "plan_name",
+            "created_at",
+        ]

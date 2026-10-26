@@ -2,7 +2,7 @@ from rest_framework import serializers
 from .models import (
     Announcement, Asset, Attendance, Candidate, Department, Designation,
     Employee, Expense, Holiday, Job, LeaveBalance, LeaveRequest, LeaveType,
-    Overtime, Payroll, PerformanceReview, Shift, Training, TrainingEnrollment,
+    Notification, Overtime, Payroll, PerformanceReview, Shift, Training, TrainingEnrollment,
 )
 
 
@@ -134,24 +134,26 @@ class LeaveListSerializer(serializers.ModelSerializer):
 # ── Attendance ────────────────────────────────────────────────────────────────
 
 class AttendanceSerializer(serializers.ModelSerializer):
-    employee_name   = serializers.CharField(source="employee.name",            read_only=True)
-    department_name = serializers.CharField(source="employee.department.name", read_only=True)
+    employee_name   = serializers.CharField(source="employee.name",            read_only=True, default="")
+    employee_code   = serializers.CharField(source="employee.employee_code",   read_only=True, default="")
+    department_name = serializers.CharField(source="employee.department.name", read_only=True, default="—")
 
     class Meta:
         model  = Attendance
-        fields = ("id", "employee", "employee_name", "department_name", "date", "check_in", "check_out", "status")
+        fields = ("id", "employee", "employee_name", "employee_code", "department_name", "date", "check_in", "check_out", "status")
 
 
 class AttendanceListSerializer(serializers.ModelSerializer):
-    employeeId = serializers.CharField(source="employee.employee_code",        read_only=True)
-    name       = serializers.CharField(source="employee.name",                 read_only=True)
-    department = serializers.CharField(source="employee.department.name",      read_only=True)
+    id         = serializers.IntegerField(read_only=True)
+    employeeId = serializers.CharField(source="employee.employee_code",        read_only=True, default="—")
+    name       = serializers.CharField(source="employee.name",                 read_only=True, default="Unknown")
+    department = serializers.CharField(source="employee.department.name",      read_only=True, default="—")
     checkIn    = serializers.CharField(source="check_in")
     checkOut   = serializers.CharField(source="check_out")
 
     class Meta:
         model  = Attendance
-        fields = ("employeeId", "name", "department", "checkIn", "checkOut", "status", "date")
+        fields = ("id", "employeeId", "name", "department", "checkIn", "checkOut", "status", "date")
 
 
 # ── Payroll ───────────────────────────────────────────────────────────────────
@@ -302,3 +304,34 @@ class AnnouncementSerializer(serializers.ModelSerializer):
         model  = Announcement
         fields = ("id", "title", "content", "priority", "is_active", "created_at")
         read_only_fields = ("id", "created_at")
+
+
+# ── Notification ─────────────────────────────────────────────────────────────
+
+class NotificationSerializer(serializers.ModelSerializer):
+    time_ago = serializers.SerializerMethodField()
+
+    class Meta:
+        model  = Notification
+        fields = (
+            "id", "user", "title", "message", "event_type", "tone",
+            "actor_name", "link", "is_read", "created_at", "time_ago",
+        )
+        read_only_fields = ("id", "created_at", "time_ago")
+
+    def get_time_ago(self, obj):
+        from django.utils import timezone
+        diff = timezone.now() - obj.created_at
+        seconds = int(diff.total_seconds())
+        if seconds < 60:
+            return "Just now"
+        elif seconds < 3600:
+            m = max(1, seconds // 60)
+            return f"{m}m ago"
+        elif seconds < 86400:
+            h = seconds // 3600
+            return f"{h}h ago"
+        else:
+            d = seconds // 86400
+            return f"{d}d ago"
+

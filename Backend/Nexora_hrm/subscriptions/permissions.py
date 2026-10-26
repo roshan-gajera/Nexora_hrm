@@ -12,6 +12,9 @@ class HasActiveSubscription(BasePermission):
         if not request.user.is_authenticated:
             return False
 
+        if getattr(request.user, "role", None) == "employee":
+            return True
+
         try:
             subscription = request.user.subscription
         except Subscription.DoesNotExist:

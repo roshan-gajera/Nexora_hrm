@@ -5,6 +5,10 @@ export async function fetchPayroll(params = {}) {
   return request(`/payroll/${query ? "?" + query : ""}`);
 }
 
+export async function checkMonthPayroll(month) {
+  return request(`/payroll/check_month/?month=${encodeURIComponent(month)}`);
+}
+
 export async function updatePayroll(id, data) {
   return request(`/payroll/${id}/`, {
     method: "PATCH",

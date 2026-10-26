@@ -103,6 +103,7 @@ export default function LeavePage() {
 
   const pendingCount  = leaves.filter((l) => l.status === "Pending").length;
   const approvedCount = leaves.filter((l) => l.status === "Approved").length;
+  const rejectedCount = leaves.filter((l) => l.status === "Rejected").length;
 
   if (loading) {
     return (
@@ -114,14 +115,14 @@ export default function LeavePage() {
 
   return (
     <div className="page-enter">
-      <PageHeader
+      {/* <PageHeader
         title="Leave Management"
         subtitle="Review, approve, and track time-off requests"
         action={<Button icon={Plus} onClick={() => setShowForm(true)}>Apply for leave</Button>}
-      />
+      /> */}
 
       {/* Leave balance cards */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px,1fr))", gap: 14, marginBottom: 20 }}>
+      {/* <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px,1fr))", gap: 14, marginBottom: 20 }}>
         {BALANCES.map((b) => {
           const remaining = b.total - b.used;
           const pct       = Math.round((b.used / b.total) * 100);
@@ -139,21 +140,25 @@ export default function LeavePage() {
             </Card>
           );
         })}
-      </div>
+      </div> */}
 
       {/* Summary row */}
       <div style={{ display: "flex", gap: 12, marginBottom: 16, flexWrap: "wrap" }}>
         <Card style={{ padding: "12px 18px", flex: 1, minWidth: 140 }}>
-          <div style={{ fontFamily: "Inter, sans-serif", fontSize: 12, color: C.slate, fontWeight: 600 }}>Pending</div>
-          <div style={{ fontFamily: "Sora, sans-serif", fontSize: 22, fontWeight: 700, color: C.amber }}>{pendingCount}</div>
+          <div style={{ fontFamily: "Inter, sans-serif", fontSize: 12, color: C.slate, fontWeight: 600 }}>Total requests</div>
+          <div style={{ fontFamily: "Sora, sans-serif", fontSize: 22, fontWeight: 700, color: C.ink }}>{leaves.length}</div>
         </Card>
         <Card style={{ padding: "12px 18px", flex: 1, minWidth: 140 }}>
           <div style={{ fontFamily: "Inter, sans-serif", fontSize: 12, color: C.slate, fontWeight: 600 }}>Approved this month</div>
           <div style={{ fontFamily: "Sora, sans-serif", fontSize: 22, fontWeight: 700, color: C.teal }}>{approvedCount}</div>
         </Card>
         <Card style={{ padding: "12px 18px", flex: 1, minWidth: 140 }}>
-          <div style={{ fontFamily: "Inter, sans-serif", fontSize: 12, color: C.slate, fontWeight: 600 }}>Total requests</div>
-          <div style={{ fontFamily: "Sora, sans-serif", fontSize: 22, fontWeight: 700, color: C.ink }}>{leaves.length}</div>
+          <div style={{ fontFamily: "Inter, sans-serif", fontSize: 12, color: C.slate, fontWeight: 600 }}>Rejected this month</div>
+          <div style={{ fontFamily: "Sora, sans-serif", fontSize: 22, fontWeight: 700, color: C.coral }}>{rejectedCount}</div>
+        </Card>
+        <Card style={{ padding: "12px 18px", flex: 1, minWidth: 140 }}>
+          <div style={{ fontFamily: "Inter, sans-serif", fontSize: 12, color: C.slate, fontWeight: 600 }}>Pending</div>
+          <div style={{ fontFamily: "Sora, sans-serif", fontSize: 22, fontWeight: 700, color: C.amber }}>{pendingCount}</div>
         </Card>
       </div>
 

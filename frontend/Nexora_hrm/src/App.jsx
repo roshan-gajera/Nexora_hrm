@@ -24,13 +24,13 @@ import LeavePage      from "./pages/LeavePage";
 import PayrollPage    from "./pages/PayrollPage";
 import DepartmentsPage  from "./pages/DepartmentsPage";
 import RecruitmentPage  from "./pages/RecruitmentPage";
-import PerformancePage  from "./pages/PerformancePage";
 import SettingsPage   from "./pages/SettingsPage";
 import SubscriptionPage from "./pages/SubscriptionPage";
 
-import EmpDashboardPage from "./pages/EmpDashboardPage";
-import EmpLeavePage     from "./pages/EmpLeavePage";
-import EmpPayslipsPage  from "./pages/EmpPayslipsPage";
+import EmpDashboardPage  from "./pages/EmpDashboardPage";
+import EmpAttendancePage from "./pages/EmpAttendancePage";
+import EmpLeavePage      from "./pages/EmpLeavePage";
+import EmpPayslipsPage   from "./pages/EmpPayslipsPage";
 
 function useFonts() {
   useEffect(() => {
@@ -188,12 +188,6 @@ function AppShell() {
               element={<RecruitmentPage />}
             />
 
-            {/* PERFORMANCE */}
-            <Route
-              path="/performance"
-              element={<PerformancePage />}
-            />
-
             {/* SETTINGS */}
             <Route
               path="/settings"
@@ -205,6 +199,7 @@ function AppShell() {
 
             {/* EMPLOYEE PORTAL ROUTES */}
             <Route path="/emp-dashboard" element={<EmpDashboardPage setPage={setPage} user={user} />} />
+            <Route path="/emp-attendance" element={<EmpAttendancePage user={user} />} />
             <Route path="/emp-leave" element={<EmpLeavePage user={user} />} />
             <Route path="/emp-payslips" element={<EmpPayslipsPage user={user} />} />
 

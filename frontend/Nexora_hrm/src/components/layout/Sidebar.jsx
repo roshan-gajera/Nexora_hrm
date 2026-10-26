@@ -50,17 +50,6 @@ export default function Sidebar({ page, setPage, open, onToggle, onLogout, user 
 
       {/* Footer */}
       <div style={{ padding: "12px 10px", borderTop: "1px solid rgba(255,255,255,0.08)", display: "flex", flexDirection: "column", gap: 6 }}>
-        {/* Admin/HR Switch Portal button */}
-        {!isEmpRole && (
-          <div
-            onClick={() => setPage(isEmpMode ? "dashboard" : "emp-dashboard")}
-            title={open ? "Switch View" : isEmpMode ? "Admin Portal" : "Employee Portal"}
-            style={{ display: "flex", alignItems: "center", gap: 10, color: C.teal, background: "rgba(31,138,112,0.12)", cursor: "pointer", padding: "7px 10px", borderRadius: 7, fontFamily: "Inter, sans-serif", fontSize: 12.5, fontWeight: 600 }}
-          >
-            {isEmpMode ? <Shield size={16} style={{ flexShrink: 0 }} /> : <UserCheck size={16} style={{ flexShrink: 0 }} />}
-            {open && (isEmpMode ? "Switch to Admin" : "Employee Portal")}
-          </div>
-        )}
 
         <div
           onClick={onToggle}

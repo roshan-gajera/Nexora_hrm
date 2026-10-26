@@ -8,11 +8,11 @@ import { fetchMyLeaves, submitLeaveRequest } from "../api/employeePortalApi";
 
 const LEAVE_TYPES = ["Sick Leave", "Casual Leave", "Earned Leave", "Unpaid Leave"];
 
-const BALANCES = [
-  { type: "Casual Leave",  total: 12, used: 4, color: C.blue  },
-  { type: "Sick Leave",    total: 10, used: 2, color: C.coral },
-  { type: "Earned Leave",  total: 15, used: 7, color: C.teal  },
-  { type: "Unpaid Leave",  total: 5,  used: 0, color: C.amber },
+const BASE_BALANCES = [
+  { type: "Casual Leave",  total: 12, color: C.blue  },
+  { type: "Sick Leave",    total: 10, color: C.coral },
+  { type: "Earned Leave",  total: 15, color: C.teal  },
+  { type: "Unpaid Leave",  total: 5,  color: C.amber },
 ];
 
 function LeaveForm({ onSave, onCancel }) {
@@ -81,7 +81,7 @@ export default function EmpLeavePage() {
 
   async function handleSubmit(form) {
     try {
-      await submitLeaveRequest({
+      const res = await submitLeaveRequest({
         from_date: form.from,
         to_date: form.to,
         days: form.days,
@@ -89,27 +89,34 @@ export default function EmpLeavePage() {
         leave_type: form.type,
         status: "Pending",
       });
+      const newLeave = {
+        id: res.id,
+        type: res.leave_type_name || form.type,
+        from: res.from_date || form.from,
+        to: res.to_date || form.to,
+        days: res.days || form.days,
+        reason: res.reason || form.reason,
+        status: res.status || "Pending",
+      };
+      setLeaves((prev) => [newLeave, ...prev]);
+      toast("Leave request submitted to Admin successfully", "success");
+      setShowForm(false);
     } catch (err) {
-      console.warn("Leave submit notice:", err);
+      console.error("Leave submit notice:", err);
+      toast("Failed to submit leave request", "error");
     }
-
-    const newLeave = {
-      id: "L" + (900 + leaves.length),
-      type: form.type,
-      from: form.from,
-      to: form.to,
-      days: form.days,
-      reason: form.reason,
-      status: "Pending",
-    };
-    setLeaves((prev) => [newLeave, ...prev]);
-    toast("Leave request submitted successfully");
-    setShowForm(false);
   }
 
   const pendingCount  = leaves.filter((l) => l.status === "Pending").length;
   const approvedCount = leaves.filter((l) => l.status === "Approved").length;
   const rejectedCount = leaves.filter((l) => l.status === "Rejected").length;
+
+  const balances = BASE_BALANCES.map((b) => {
+    const used = leaves
+      .filter((l) => (l.type || l.leave_type) === b.type && l.status === "Approved")
+      .reduce((sum, l) => sum + (Number(l.days) || 0), 0);
+    return { ...b, used };
+  });
 
   if (loading) {
     return (
@@ -129,7 +136,7 @@ export default function EmpLeavePage() {
 
       {/* Leave Balance Cards */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 14, marginBottom: 22 }}>
-        {BALANCES.map((b) => {
+        {balances.map((b) => {
           const remaining = b.total - b.used;
           const pct = Math.round((b.used / b.total) * 100);
           return (

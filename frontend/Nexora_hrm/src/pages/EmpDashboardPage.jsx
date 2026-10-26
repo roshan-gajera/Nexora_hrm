@@ -190,8 +190,9 @@ export default function EmpDashboardPage({ user, setPage }) {
       {/* Quick Actions */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12 }}>
         {[
-          { label: "Apply for Leave",  icon: CalendarDays, page: "emp-leave",    accent: C.blue,  desc: "Request time off" },
-          { label: "View Payslips",    icon: FileText,     page: "emp-payslips", accent: C.teal,  desc: "Download salary slips" },
+          { label: "Punch In / Attendance", icon: CalendarCheck, page: "emp-attendance", accent: C.teal,  desc: "Daily clock-in & status" },
+          { label: "Apply for Leave",        icon: CalendarDays,  page: "emp-leave",      accent: C.blue,  desc: "Request time off" },
+          { label: "View Payslips",          icon: FileText,      page: "emp-payslips",   accent: C.amber, desc: "Download salary slips" },
         ].map((q) => (
           <div
             key={q.label}

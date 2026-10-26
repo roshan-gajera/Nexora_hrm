@@ -12,20 +12,17 @@ import { fetchEmployees } from "../api/employeesApi";
 import { fetchDepartments } from "../api/departmentsApi";
 import { fetchLeaves } from "../api/leavesApi";
 import { fetchAttendance } from "../api/attendanceApi";
+import { fetchActivityFeed } from "../api/notificationsApi";
 
-const ACTIVITY = [
-  { id: 1, name: "Rahul Sharma",   action: "applied for Casual Leave",       time: "2m ago",  tone: "amber" },
-  { id: 2, name: "Priya Nair",     action: "approved Neha Gupta's leave",    time: "18m ago", tone: "teal"  },
-  { id: 3, name: "Vikram Rao",     action: "processed June payroll",         time: "1h ago",  tone: "blue"  },
-  { id: 4, name: "Aditi Rao",      action: "moved to Interview stage",       time: "2h ago",  tone: "slate" },
-  { id: 5, name: "Karan Shah",     action: "completed performance review",   time: "3h ago",  tone: "teal"  },
-];
+// Activity feed is loaded from the backend (real-time)
+const TONE_COLORS = { teal: C.teal, amber: C.amber, coral: C.coral, blue: C.blue, slate: C.slate, purple: "#6B46A8" };
 
 export default function DashboardPage({ setPage }) {
   const [employees,   setEmployees]   = useState([]);
   const [departments, setDepartments] = useState([]);
   const [leaves,      setLeaves]      = useState([]);
   const [attendance,  setAttendance]  = useState([]);
+  const [activity,    setActivity]    = useState([]);
   const [loading,     setLoading]     = useState(true);
   const [error,       setError]       = useState("");
   const [apiAlert,    setApiAlert]    = useState(null);
@@ -39,7 +36,8 @@ export default function DashboardPage({ setPage }) {
       fetchDepartments(),
       fetchLeaves(),
       fetchAttendance(),
-    ]).then(([empRes, deptRes, leaveRes, attRes]) => {
+      fetchActivityFeed(),
+    ]).then(([empRes, deptRes, leaveRes, attRes, actRes]) => {
       if (!isMounted) return;
 
       // Check all results for 403 or subscription-expired errors
@@ -61,10 +59,11 @@ export default function DashboardPage({ setPage }) {
         }
       }
 
-      if (empRes.status   === "fulfilled") setEmployees(  Array.isArray(empRes.value)   ? empRes.value   : empRes.value?.results   || []);
-      if (deptRes.status  === "fulfilled") setDepartments(Array.isArray(deptRes.value)  ? deptRes.value  : deptRes.value?.results  || []);
-      if (leaveRes.status === "fulfilled") setLeaves(     Array.isArray(leaveRes.value) ? leaveRes.value : leaveRes.value?.results || []);
-      if (attRes.status   === "fulfilled") setAttendance( Array.isArray(attRes.value)   ? attRes.value   : attRes.value?.results   || []);
+      if (empRes.status  === "fulfilled") setEmployees(  Array.isArray(empRes.value)  ? empRes.value  : empRes.value?.results   || []);
+      if (deptRes.status === "fulfilled") setDepartments(Array.isArray(deptRes.value) ? deptRes.value : deptRes.value?.results  || []);
+      if (leaveRes.status=== "fulfilled") setLeaves(     Array.isArray(leaveRes.value)? leaveRes.value: leaveRes.value?.results || []);
+      if (attRes.status  === "fulfilled") setAttendance( Array.isArray(attRes.value)  ? attRes.value  : attRes.value?.results   || []);
+      if (actRes.status  === "fulfilled") setActivity(   Array.isArray(actRes.value)  ? actRes.value  : actRes.value?.results   || []);
     }).finally(() => { if (isMounted) setLoading(false); });
 
     return () => { isMounted = false; };
@@ -213,68 +212,6 @@ export default function DashboardPage({ setPage }) {
         <StatCard label="Open Positions"        value={JOBS_SEED.filter((j) => j.status === "Open").length}         delta="Across 4 depts"    positive icon={Briefcase}   accent={C.coral} />
       </div>
 
-      {/* Charts row */}
-      <div style={{ display: "grid", gridTemplateColumns: "1.6fr 1fr", gap: 16, marginBottom: 20 }}>
-        <Card>
-          <p style={{ fontFamily: "Sora, sans-serif", fontWeight: 700, color: C.ink, margin: "0 0 14px" }}>Headcount trend</p>
-          <ResponsiveContainer width="100%" height={210}>
-            <LineChart data={headcountTrend}>
-              <CartesianGrid stroke={C.border} vertical={false} />
-              <XAxis dataKey="month" tick={{ fontSize: 12, fontFamily: "Inter" }} stroke="transparent" />
-              <YAxis tick={{ fontSize: 12, fontFamily: "Inter" }} stroke="transparent" domain={["auto", "auto"]} />
-              <Tooltip contentStyle={{ fontFamily: "Inter", fontSize: 12, borderRadius: 8, border: `1px solid ${C.border}` }} />
-              <Line type="monotone" dataKey="count" stroke={C.teal} strokeWidth={2.5} dot={{ r: 4, fill: C.teal }} activeDot={{ r: 6 }} />
-            </LineChart>
-          </ResponsiveContainer>
-        </Card>
-
-        <Card>
-          <p style={{ fontFamily: "Sora, sans-serif", fontWeight: 700, color: C.ink, margin: "0 0 14px" }}>By department</p>
-          <ResponsiveContainer width="100%" height={210}>
-            <PieChart>
-              <Pie data={deptData} dataKey="value" nameKey="name" innerRadius={50} outerRadius={80} paddingAngle={3}>
-                {deptData.map((d, i) => <Cell key={i} fill={d.color} />)}
-              </Pie>
-              <Tooltip contentStyle={{ fontFamily: "Inter", fontSize: 12, borderRadius: 8 }} />
-              <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontFamily: "Inter", fontSize: 11.5 }} />
-            </PieChart>
-          </ResponsiveContainer>
-        </Card>
-      </div>
-
-      {/* Attendance bar + Activity feed */}
-      <div style={{ display: "grid", gridTemplateColumns: "1.6fr 1fr", gap: 16, marginBottom: 20 }}>
-        <Card>
-          <p style={{ fontFamily: "Sora, sans-serif", fontWeight: 700, color: C.ink, margin: "0 0 14px" }}>Today's attendance breakdown</p>
-          <ResponsiveContainer width="100%" height={180}>
-            <BarChart data={attendanceData} barSize={36}>
-              <CartesianGrid stroke={C.border} vertical={false} />
-              <XAxis dataKey="status" tick={{ fontSize: 12, fontFamily: "Inter" }} stroke="transparent" />
-              <YAxis tick={{ fontSize: 12, fontFamily: "Inter" }} stroke="transparent" />
-              <Tooltip contentStyle={{ fontFamily: "Inter", fontSize: 12, borderRadius: 8 }} />
-              <Bar dataKey="count" radius={[6, 6, 0, 0]}>
-                {attendanceData.map((d, i) => <Cell key={i} fill={d.fill} />)}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </Card>
-
-        <Card>
-          <p style={{ fontFamily: "Sora, sans-serif", fontWeight: 700, color: C.ink, margin: "0 0 14px" }}>Recent activity</p>
-          <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
-            {ACTIVITY.map((a, i) => (
-              <div key={a.id} style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "10px 0", borderBottom: i < ACTIVITY.length - 1 ? `1px solid ${C.border}` : "none" }}>
-                <Avatar name={a.name} size={28} />
-                <div style={{ flex: 1 }}>
-                  <span style={{ fontFamily: "Inter, sans-serif", fontSize: 12.5, fontWeight: 600, color: C.ink }}>{a.name} </span>
-                  <span style={{ fontFamily: "Inter, sans-serif", fontSize: 12.5, color: C.slate }}>{a.action}</span>
-                  <div style={{ fontFamily: "Inter, sans-serif", fontSize: 11, color: C.slateLight, marginTop: 2 }}>{a.time}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </Card>
-      </div>
 
       {/* Quick actions */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px,1fr))", gap: 12, marginBottom: 20 }}>
@@ -294,6 +231,79 @@ export default function DashboardPage({ setPage }) {
             <span style={{ fontFamily: "Inter, sans-serif", fontWeight: 600, fontSize: 13, color: C.ink }}>{q.label}</span>
           </div>
         ))}
+      </div>
+      
+      {/* Charts row */}
+      <div style={{ display: "grid", gridTemplateColumns: "1.6fr 1fr", gap: 16, marginBottom: 20 }}>
+        {/* <Card>
+          <p style={{ fontFamily: "Sora, sans-serif", fontWeight: 700, color: C.ink, margin: "0 0 14px" }}>Headcount trend</p>
+          <ResponsiveContainer width="100%" height={210}>
+            <LineChart data={headcountTrend}>
+              <CartesianGrid stroke={C.border} vertical={false} />
+              <XAxis dataKey="month" tick={{ fontSize: 12, fontFamily: "Inter" }} stroke="transparent" />
+              <YAxis tick={{ fontSize: 12, fontFamily: "Inter" }} stroke="transparent" domain={["auto", "auto"]} />
+              <Tooltip contentStyle={{ fontFamily: "Inter", fontSize: 12, borderRadius: 8, border: `1px solid ${C.border}` }} />
+              <Line type="monotone" dataKey="count" stroke={C.teal} strokeWidth={2.5} dot={{ r: 4, fill: C.teal }} activeDot={{ r: 6 }} />
+            </LineChart>
+          </ResponsiveContainer>
+        </Card> */}
+
+        <Card>
+          <p style={{ fontFamily: "Sora, sans-serif", fontWeight: 700, color: C.ink, margin: "0 0 14px" }}>By department</p>
+          <ResponsiveContainer width="100%" height={210}>
+            <PieChart>
+              <Pie data={deptData} dataKey="value" nameKey="name" innerRadius={50} outerRadius={80} paddingAngle={3}>
+                {deptData.map((d, i) => <Cell key={i} fill={d.color} />)}
+              </Pie>
+              <Tooltip contentStyle={{ fontFamily: "Inter", fontSize: 12, borderRadius: 8 }} />
+              <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontFamily: "Inter", fontSize: 11.5 }} />
+            </PieChart>
+          </ResponsiveContainer>
+        </Card>
+      </div>
+
+      {/* Attendance bar + Activity feed */}
+      <div style={{ display: "grid", gridTemplateColumns: "1.6fr 1fr", gap: 16, marginBottom: 20 }}>
+        {/* <Card>
+          <p style={{ fontFamily: "Sora, sans-serif", fontWeight: 700, color: C.ink, margin: "0 0 14px" }}>Today's attendance breakdown</p>
+          <ResponsiveContainer width="100%" height={180}>
+            <BarChart data={attendanceData} barSize={36}>
+              <CartesianGrid stroke={C.border} vertical={false} />
+              <XAxis dataKey="status" tick={{ fontSize: 12, fontFamily: "Inter" }} stroke="transparent" />
+              <YAxis tick={{ fontSize: 12, fontFamily: "Inter" }} stroke="transparent" />
+              <Tooltip contentStyle={{ fontFamily: "Inter", fontSize: 12, borderRadius: 8 }} />
+              <Bar dataKey="count" radius={[6, 6, 0, 0]}>
+                {attendanceData.map((d, i) => <Cell key={i} fill={d.fill} />)}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </Card> */}
+
+        <Card>
+          <p style={{ fontFamily: "Sora, sans-serif", fontWeight: 700, color: C.ink, margin: "0 0 14px" }}>Recent activity</p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+            {activity.length === 0 ? (
+              <div style={{ padding: "16px 0", textAlign: "center", color: C.slateLight, fontFamily: "Inter, sans-serif", fontSize: 13 }}>
+                No activity yet. Actions like employee creation, leave requests, and attendance check-ins will appear here.
+              </div>
+            ) : activity.map((a, i) => {
+              const dot = TONE_COLORS[a.tone] ?? C.blue;
+              return (
+                <div key={a.id} style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "10px 0", borderBottom: i < activity.length - 1 ? `1px solid ${C.border}` : "none" }}>
+                  <div style={{ width: 8, height: 8, borderRadius: "50%", background: dot, marginTop: 6, flexShrink: 0 }} />
+                  <Avatar name={a.actor_name || "System"} size={26} />
+                  <div style={{ flex: 1 }}>
+                    {a.actor_name && (
+                      <span style={{ fontFamily: "Inter, sans-serif", fontSize: 12.5, fontWeight: 600, color: C.ink }}>{a.actor_name}{" "}</span>
+                    )}
+                    <span style={{ fontFamily: "Inter, sans-serif", fontSize: 12.5, color: C.slate }}>{a.message}</span>
+                    <div style={{ fontFamily: "Inter, sans-serif", fontSize: 11, color: C.slateLight, marginTop: 2 }}>{a.time_ago}</div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </Card>
       </div>
 
       {/* Pending leaves table */}

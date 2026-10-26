@@ -4,8 +4,8 @@ from .views import (
     AnnouncementViewSet, AssetViewSet, AttendanceViewSet, CandidateViewSet,
     DashboardStatsView, DepartmentViewSet, DesignationViewSet, EmployeeViewSet,
     ExpenseViewSet, HealthCheckView, HolidayViewSet, JobViewSet,
-    LeaveBalanceViewSet, LeaveRequestViewSet, LeaveTypeViewSet, OvertimeViewSet,
-    PayrollViewSet, PerformanceReviewViewSet, ShiftViewSet,
+    LeaveBalanceViewSet, LeaveRequestViewSet, LeaveTypeViewSet, NotificationViewSet,
+    OvertimeViewSet, PayrollViewSet, PerformanceReviewViewSet, ShiftViewSet,
     TrainingEnrollmentViewSet, TrainingViewSet,
 )
 
@@ -29,6 +29,7 @@ router.register("training",              TrainingViewSet,           basename="tr
 router.register("training-enrollments",  TrainingEnrollmentViewSet, basename="training-enrollment")
 router.register("assets",                AssetViewSet,              basename="asset")
 router.register("announcements",         AnnouncementViewSet,       basename="announcement")
+router.register("notifications",         NotificationViewSet,       basename="notification")
 
 urlpatterns = [
     path("health/",          HealthCheckView.as_view(),    name="health"),

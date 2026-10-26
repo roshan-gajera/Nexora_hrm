@@ -1,4 +1,5 @@
 from django.db import models
+from django.conf import settings
 
 class Department(models.Model):
     name  = models.CharField(max_length=120, unique=True)
@@ -76,6 +77,20 @@ class Employee(models.Model):
             last = Employee.objects.order_by("-id").first()
             self.employee_code = f"E{1000 + ((last.id + 1) if last else 1)}"
         super().save(*args, **kwargs)
+
+        try:
+            from accounts.models import User
+            if not User.objects.filter(email=self.email).exists():
+                name_parts = self.name.strip().split(" ", 1)
+                User.objects.create_user(
+                    email=self.email,
+                    password="Employee@123",
+                    first_name=name_parts[0],
+                    last_name=name_parts[1] if len(name_parts) > 1 else "",
+                    role=User.Role.EMPLOYEE,
+                )
+        except Exception:
+            pass
 
 
 class Holiday(models.Model):
@@ -390,3 +405,21 @@ class Announcement(models.Model):
 
     def __str__(self):
         return self.title
+
+
+class Notification(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, null=True, blank=True, related_name="notifications")
+    title = models.CharField(max_length=200)
+    message = models.TextField()
+    event_type = models.CharField(max_length=50, default="general")
+    tone = models.CharField(max_length=20, default="blue")
+    actor_name = models.CharField(max_length=120, blank=True)
+    link = models.CharField(max_length=100, blank=True)
+    is_read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.title}: {self.message[:40]}"

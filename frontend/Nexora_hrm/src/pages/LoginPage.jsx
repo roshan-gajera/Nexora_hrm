@@ -1,13 +1,17 @@
-  import React, { useState } from "react";
+import React, { useState } from "react";
 import { C } from "../constants/theme";
 import { Input } from "../components/ui";
 import { loginApi } from "../api/auth";
 
+import { Eye, EyeOff } from "lucide-react";
+
 export default function LoginPage({ onLogin, onNavigateSignup }) {
-  const [email,    setEmail]    = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error,    setError]    = useState("");
-  const [loading,  setLoading]  = useState(false);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const [showPassword, setShowPassword] = useState(false);
 
   async function submit(e) {
     e.preventDefault();
@@ -45,14 +49,42 @@ export default function LoginPage({ onLogin, onNavigateSignup }) {
           <p style={{ color: C.slate, fontSize: 13.5, margin: "0 0 26px" }}>Sign in to manage your workforce.</p>
 
           <form onSubmit={submit}>
-            <Input label="Work email"  type="email"    value={email}    onChange={(e) => setEmail(e.target.value)}    placeholder="work@gmail.com" />
-            <Input label="Password"    type="text" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Enter Your Password" />
+            <Input label="Work email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="work@gmail.com" />
+
+            <div style={{ position: "relative" }}>
+              <Input
+                label="Password"
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Enter Your Password"
+              />
+
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                style={{
+                  position: "absolute",
+                  right: "12px",
+                  bottom: "10px",
+                  border: "none",
+                  background: "transparent",
+                  cursor: "pointer",
+                  padding: 0,
+                  display: "flex",
+                  alignItems: "center",
+                }}
+              >
+                {showPassword ? <Eye size={18} /> : <EyeOff size={18} />}
+              </button>
+            </div>
+
             {error && <p style={{ color: C.coral, fontSize: 12.5, marginTop: -6, marginBottom: 14 }}>{error}</p>}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
               <label style={{ fontSize: 12.5, color: C.slate, display: "flex", gap: 6, alignItems: "center" }}>
                 <input type="checkbox" defaultChecked /> Remember me
               </label>
-              <span style={{ fontSize: 12.5, color: C.teal, cursor: "pointer", fontWeight: 600 }}>Forgot password?</span>
+              {/* <span style={{ fontSize: 12.5, color: C.teal, cursor: "pointer", fontWeight: 600 }}>Forgot password?</span> */}
             </div>
             <button type="submit" disabled={loading} style={{ width: "100%", background: C.ink, color: "#fff", border: "none", padding: "11px 0", borderRadius: 8, fontFamily: "Sora, sans-serif", fontWeight: 700, fontSize: 14.5, cursor: loading ? "wait" : "pointer", opacity: loading ? 0.7 : 1 }}>
               {loading ? "Signing in..." : "Sign in"}
