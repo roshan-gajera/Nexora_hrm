@@ -22,7 +22,10 @@ export async function markPayrollPaid(id) {
   });
 }
 
-export async function generatePayroll(month) {
+export async function generatePayroll(monthData) {
+  const month = typeof monthData === "object"
+    ? (monthData.month && monthData.year ? `${monthData.month} ${monthData.year}` : monthData.month || "")
+    : monthData;
   return request("/payroll/bulk_process/", {
     method: "POST",
     body: JSON.stringify({ month }),

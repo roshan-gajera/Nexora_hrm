@@ -4,6 +4,22 @@
   --font-display: 'Sora', sans-serif;
   --font-body:    'Inter', sans-serif;
   --font-mono:    'IBM Plex Mono', monospace;
+
+  --color-ink:        #14213D;
+  --color-ink-soft:   #1E2E52;
+  --color-canvas:     #F4F6F9;
+  --color-panel:      #FFFFFF;
+  --color-border:     #E2E7EF;
+  --color-slate:      #5C6B7A;
+  --color-slate-light:#8A97A6;
+  --color-teal:       #1F8A70;
+  --color-teal-soft:  #E4F3EF;
+  --color-amber:      #B9790A;
+  --color-amber-soft: #FBF0DC;
+  --color-coral:      #C4432F;
+  --color-coral-soft: #FBE7E3;
+  --color-blue:       #2A5C9A;
+  --color-blue-soft:  #E6EEF7;
 }
 
 html { font-size: 16px; }

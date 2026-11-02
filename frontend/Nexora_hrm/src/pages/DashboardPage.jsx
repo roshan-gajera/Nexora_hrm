@@ -1,18 +1,19 @@
 import React, { useState, useEffect } from "react";
 import { Users, CalendarCheck, CalendarDays, Briefcase, Plus, Download, UserCheck, AlertTriangle, X, CreditCard } from "lucide-react";
 import {
-  LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
-  XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend,
+  PieChart, Pie, Cell,
+  Tooltip, ResponsiveContainer, Legend,
 } from "recharts";
 import { C } from "../constants/theme";
 import { JOBS_SEED } from "../data/mockData";
-import { statusTone, fmtMoney } from "../utils/helpers";
+import { statusTone } from "../utils/helpers";
 import { Card, PageHeader, StatCard, Table, Avatar, Pill, EmptyState, Button } from "../components/ui";
 import { fetchEmployees } from "../api/employeesApi";
 import { fetchDepartments } from "../api/departmentsApi";
 import { fetchLeaves } from "../api/leavesApi";
-import { fetchAttendance } from "../api/attendanceApi";
+import { fetchAttendanceToday } from "../api/attendanceApi";
 import { fetchActivityFeed } from "../api/notificationsApi";
+import "../styles/DashboardPage.css";
 
 // Activity feed is loaded from the backend (real-time)
 const TONE_COLORS = { teal: C.teal, amber: C.amber, coral: C.coral, blue: C.blue, slate: C.slate, purple: "#6B46A8" };
@@ -24,7 +25,6 @@ export default function DashboardPage({ setPage }) {
   const [attendance,  setAttendance]  = useState([]);
   const [activity,    setActivity]    = useState([]);
   const [loading,     setLoading]     = useState(true);
-  const [error,       setError]       = useState("");
   const [apiAlert,    setApiAlert]    = useState(null);
 
   useEffect(() => {
@@ -35,7 +35,7 @@ export default function DashboardPage({ setPage }) {
       fetchEmployees(),
       fetchDepartments(),
       fetchLeaves(),
-      fetchAttendance(),
+      fetchAttendanceToday(),
       fetchActivityFeed(),
     ]).then(([empRes, deptRes, leaveRes, attRes, actRes]) => {
       if (!isMounted) return;
@@ -69,27 +69,32 @@ export default function DashboardPage({ setPage }) {
     return () => { isMounted = false; };
   }, []);
 
-  const headcountTrend = [
-    { month: "Feb", count: 172 }, { month: "Mar", count: 178 }, { month: "Apr", count: 183 },
-    { month: "May", count: 189 }, { month: "Jun", count: 196 }, { month: "Jul", count: employees.length + 172 },
-  ];
-
   const deptData      = departments.map((d) => ({ name: d.name.split(" ")[0], value: employees.filter((e) => e.department === d.name).length, color: d.color }));
   const pendingLeaves = leaves.filter((l) => l.status === "Pending").slice(0, 5);
-  const presentToday  = attendance.filter((a) => a.status === "Present" || a.status === "WFH").length;
 
-  const attendanceData = [
-    { status: "Present", count: attendance.filter((a) => a.status === "Present").length, fill: C.teal  },
-    { status: "WFH",     count: attendance.filter((a) => a.status === "WFH").length,     fill: C.blue  },
-    { status: "Late",    count: attendance.filter((a) => a.status === "Late").length,     fill: C.amber },
-    { status: "Absent",  count: attendance.filter((a) => a.status === "Absent").length,   fill: C.coral },
-  ];
+  const todayStr = (() => {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  })();
+
+  const serverToday = attendance.find((a) => a.date)?.date;
+  const targetDate = serverToday || todayStr;
+
+  // Filter attendance strictly for today's date and present statuses (Present, WFH, Late)
+  const presentToday = attendance.filter((a) => {
+    const isToday = !a.date || a.date === targetDate || a.date === todayStr;
+    const isPresent = a.status === "Present" || a.status === "WFH" || a.status === "Late";
+    return isToday && isPresent;
+  }).length;
 
   const today = new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
 
   if (loading) {
     return (
-      <div style={{ padding: 40, textAlign: "center", color: C.slate, fontFamily: "Inter, sans-serif" }}>
+      <div className="dashboard-loading">
         Loading dashboard...
       </div>
     );
@@ -101,103 +106,32 @@ export default function DashboardPage({ setPage }) {
     <div className="page-enter">
       {/* ── API Alert Banner ── */}
       {apiAlert && (
-        <div
-          role="alert"
-          style={{
-            display: "flex",
-            alignItems: "flex-start",
-            gap: 12,
-            padding: "14px 18px",
-            marginBottom: 20,
-            borderRadius: 12,
-            border: `1.5px solid ${isSubscriptionAlert ? C.amber : C.coral}`,
-            background: isSubscriptionAlert ? C.amberSoft : C.coralSoft,
-            animation: "slideDown 0.3s ease",
-          }}
-        >
+        <div role="alert" className={`dashboard-alert-banner ${isSubscriptionAlert ? "subscription" : "error"}`}>
           {/* Icon */}
-          <div style={{
-            flexShrink: 0,
-            width: 36,
-            height: 36,
-            borderRadius: 8,
-            background: isSubscriptionAlert ? "#FBD97040" : "#F0806040",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}>
-            {isSubscriptionAlert
-              ? <CreditCard size={18} color={C.amber} />
-              : <AlertTriangle size={18} color={C.coral} />}
+          <div className="dashboard-alert-icon-box">
+            {isSubscriptionAlert ? <CreditCard size={18} color={C.amber} /> : <AlertTriangle size={18} color={C.coral} />}
           </div>
 
           {/* Text */}
-          <div style={{ flex: 1 }}>
-            <p style={{
-              margin: 0,
-              fontFamily: "Sora, sans-serif",
-              fontWeight: 700,
-              fontSize: 13.5,
-              color: isSubscriptionAlert ? C.amber : C.coral,
-            }}>
-              {isSubscriptionAlert ? "Subscription Expired" : "Access Denied (403 Forbidden)"}
-            </p>
-            <p style={{
-              margin: "3px 0 0",
-              fontFamily: "Inter, sans-serif",
-              fontSize: 13,
-              color: C.ink,
-              opacity: 0.8,
-            }}>
-              {apiAlert.message}
-            </p>
+          <div className="dashboard-alert-body">
+            <p className="dashboard-alert-title">{isSubscriptionAlert ? "Subscription Expired" : "Access Denied (403 Forbidden)"}</p>
+            <p className="dashboard-alert-text">{apiAlert.message}</p>
             {isSubscriptionAlert && (
-              <button
-                onClick={() => setPage("subscription")}
-                style={{
-                  marginTop: 8,
-                  padding: "5px 14px",
-                  borderRadius: 6,
-                  border: "none",
-                  background: C.amber,
-                  color: "#fff",
-                  fontFamily: "Inter, sans-serif",
-                  fontWeight: 600,
-                  fontSize: 12.5,
-                  cursor: "pointer",
-                }}
-              >
+              <button type="button" onClick={() => setPage("subscription")} className="dashboard-alert-renew-btn">
                 Renew Subscription →
               </button>
             )}
           </div>
 
           {/* Dismiss */}
-          <button
-            onClick={() => setApiAlert(null)}
-            title="Dismiss"
-            style={{
-              background: "none",
-              border: "none",
-              cursor: "pointer",
-              padding: 4,
-              borderRadius: 4,
-              display: "flex",
-              alignItems: "center",
-              color: C.slate,
-              flexShrink: 0,
-            }}
-          >
+          <button type="button" onClick={() => setApiAlert(null)} title="Dismiss" className="dashboard-alert-dismiss-btn">
             <X size={16} />
           </button>
         </div>
       )}
 
-      <PageHeader
-        title="Dashboard"
-        subtitle={today}
-        action={
-          <div style={{ display: "flex", gap: 10 }}>
+      <PageHeader title="Dashboard" subtitle={today} action={
+          <div className="dashboard-header-actions">
             <Button variant="outline" icon={Download} small>Export CSV</Button>
             <Button icon={Plus} small onClick={() => setPage("employees")}>Add Employee</Button>
           </div>
@@ -205,51 +139,41 @@ export default function DashboardPage({ setPage }) {
       />
 
       {/* Stat cards */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16, marginBottom: 20 }}>
-        <StatCard label="Total Employees"       value={employees.length}                                            delta="+4.2% this quarter" positive icon={Users}       accent={C.blue}  />
-        <StatCard label="Present Today"         value={`${presentToday}/${attendance.length}`}                      delta="On track"           positive icon={CalendarCheck} accent={C.teal}  />
-        <StatCard label="Pending Leave Requests" value={pendingLeaves.length}                                       delta="Needs review"  positive={false} icon={CalendarDays} accent={C.amber} />
-        <StatCard label="Open Positions"        value={JOBS_SEED.filter((j) => j.status === "Open").length}         delta="Across 4 depts"    positive icon={Briefcase}   accent={C.coral} />
+      <div className="dashboard-stats-grid">
+        <StatCard label="Total Employees" value={employees.length} delta="+4.2% this quarter" positive icon={Users} accent={C.blue}  />
+        <StatCard label="Present Today" value={presentToday+"/"+employees.length} delta="On track" positive icon={CalendarCheck} accent={C.teal}  />
+        <StatCard label="Pending Leave Requests" value={pendingLeaves.length} delta="Needs review"  positive={false} icon={CalendarDays} accent={C.amber} />
+        <StatCard label="Open Positions" value={JOBS_SEED.filter((j) => j.status === "Open").length} delta="Across 4 depts" positive icon={Briefcase}   accent={C.coral} />
       </div>
 
-
       {/* Quick actions */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px,1fr))", gap: 12, marginBottom: 20 }}>
+      <div className="dashboard-quick-actions-grid">
         {[
           { label: "Add Employee",    icon: Users,        page: "employees",   accent: C.blue  },
           { label: "Approve Leaves",  icon: CalendarDays, page: "leave",       accent: C.amber },
           { label: "Run Payroll",     icon: Briefcase,    page: "payroll",     accent: C.teal  },
           { label: "Post a Job",      icon: UserCheck,    page: "recruitment", accent: C.coral },
         ].map((q) => (
-          <div key={q.label} onClick={() => setPage(q.page)} style={{ background: C.panel, border: `1px solid ${C.border}`, borderRadius: 10, padding: "16px 18px", cursor: "pointer", display: "flex", alignItems: "center", gap: 12, transition: "box-shadow 0.15s" }}
-            onMouseEnter={(e) => e.currentTarget.style.boxShadow = "0 4px 16px rgba(20,33,61,0.08)"}
-            onMouseLeave={(e) => e.currentTarget.style.boxShadow = "none"}
+          <div
+            key={q.label}
+            onClick={() => setPage(q.page)}
+            className="dashboard-quick-card"
           >
-            <div style={{ width: 34, height: 34, borderRadius: 8, background: q.accent + "18", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <div
+              className="dashboard-quick-icon-box"
+              style={{ background: q.accent + "18" }}
+            >
               <q.icon size={16} color={q.accent} />
             </div>
-            <span style={{ fontFamily: "Inter, sans-serif", fontWeight: 600, fontSize: 13, color: C.ink }}>{q.label}</span>
+            <span className="dashboard-quick-label">{q.label}</span>
           </div>
         ))}
       </div>
       
       {/* Charts row */}
-      <div style={{ display: "grid", gridTemplateColumns: "1.6fr 1fr", gap: 16, marginBottom: 20 }}>
-        {/* <Card>
-          <p style={{ fontFamily: "Sora, sans-serif", fontWeight: 700, color: C.ink, margin: "0 0 14px" }}>Headcount trend</p>
-          <ResponsiveContainer width="100%" height={210}>
-            <LineChart data={headcountTrend}>
-              <CartesianGrid stroke={C.border} vertical={false} />
-              <XAxis dataKey="month" tick={{ fontSize: 12, fontFamily: "Inter" }} stroke="transparent" />
-              <YAxis tick={{ fontSize: 12, fontFamily: "Inter" }} stroke="transparent" domain={["auto", "auto"]} />
-              <Tooltip contentStyle={{ fontFamily: "Inter", fontSize: 12, borderRadius: 8, border: `1px solid ${C.border}` }} />
-              <Line type="monotone" dataKey="count" stroke={C.teal} strokeWidth={2.5} dot={{ r: 4, fill: C.teal }} activeDot={{ r: 6 }} />
-            </LineChart>
-          </ResponsiveContainer>
-        </Card> */}
-
-        <Card>
-          <p style={{ fontFamily: "Sora, sans-serif", fontWeight: 700, color: C.ink, margin: "0 0 14px" }}>By department</p>
+      <div className="dashboard-two-col-grid">
+        <Card  style={{ height : "285px"}}>
+          <p className="dashboard-card-title">By department</p>
           <ResponsiveContainer width="100%" height={210}>
             <PieChart>
               <Pie data={deptData} dataKey="value" nameKey="name" innerRadius={50} outerRadius={80} paddingAngle={3}>
@@ -260,44 +184,27 @@ export default function DashboardPage({ setPage }) {
             </PieChart>
           </ResponsiveContainer>
         </Card>
-      </div>
 
-      {/* Attendance bar + Activity feed */}
-      <div style={{ display: "grid", gridTemplateColumns: "1.6fr 1fr", gap: 16, marginBottom: 20 }}>
-        {/* <Card>
-          <p style={{ fontFamily: "Sora, sans-serif", fontWeight: 700, color: C.ink, margin: "0 0 14px" }}>Today's attendance breakdown</p>
-          <ResponsiveContainer width="100%" height={180}>
-            <BarChart data={attendanceData} barSize={36}>
-              <CartesianGrid stroke={C.border} vertical={false} />
-              <XAxis dataKey="status" tick={{ fontSize: 12, fontFamily: "Inter" }} stroke="transparent" />
-              <YAxis tick={{ fontSize: 12, fontFamily: "Inter" }} stroke="transparent" />
-              <Tooltip contentStyle={{ fontFamily: "Inter", fontSize: 12, borderRadius: 8 }} />
-              <Bar dataKey="count" radius={[6, 6, 0, 0]}>
-                {attendanceData.map((d, i) => <Cell key={i} fill={d.fill} />)}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </Card> */}
-
+        {/* Activity feed */}
         <Card>
-          <p style={{ fontFamily: "Sora, sans-serif", fontWeight: 700, color: C.ink, margin: "0 0 14px" }}>Recent activity</p>
-          <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+          <p className="dashboard-card-title">Recent activity</p>
+          <div className="dashboard-activity-list">
             {activity.length === 0 ? (
-              <div style={{ padding: "16px 0", textAlign: "center", color: C.slateLight, fontFamily: "Inter, sans-serif", fontSize: 13 }}>
+              <div className="dashboard-activity-empty">
                 No activity yet. Actions like employee creation, leave requests, and attendance check-ins will appear here.
               </div>
             ) : activity.map((a, i) => {
               const dot = TONE_COLORS[a.tone] ?? C.blue;
               return (
-                <div key={a.id} style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "10px 0", borderBottom: i < activity.length - 1 ? `1px solid ${C.border}` : "none" }}>
-                  <div style={{ width: 8, height: 8, borderRadius: "50%", background: dot, marginTop: 6, flexShrink: 0 }} />
+                <div key={a.id || i} className="dashboard-activity-item">
+                  <div className="dashboard-activity-dot" style={{ background: dot }} />
                   <Avatar name={a.actor_name || "System"} size={26} />
-                  <div style={{ flex: 1 }}>
+                  <div className="dashboard-activity-content">
                     {a.actor_name && (
-                      <span style={{ fontFamily: "Inter, sans-serif", fontSize: 12.5, fontWeight: 600, color: C.ink }}>{a.actor_name}{" "}</span>
+                      <span className="dashboard-activity-actor">{a.actor_name}{" "}</span>
                     )}
-                    <span style={{ fontFamily: "Inter, sans-serif", fontSize: 12.5, color: C.slate }}>{a.message}</span>
-                    <div style={{ fontFamily: "Inter, sans-serif", fontSize: 11, color: C.slateLight, marginTop: 2 }}>{a.time_ago}</div>
+                    <span className="dashboard-activity-msg">{a.message}</span>
+                    <div className="dashboard-activity-time">{a.time_ago}</div>
                   </div>
                 </div>
               );
@@ -308,9 +215,9 @@ export default function DashboardPage({ setPage }) {
 
       {/* Pending leaves table */}
       <Card>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-          <p style={{ fontFamily: "Sora, sans-serif", fontWeight: 700, color: C.ink, margin: 0 }}>Pending leave requests</p>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <div className="dashboard-table-header-row">
+          <p className="dashboard-card-title" style={{ margin: 0 }}>Pending leave requests</p>
+          <div className="dashboard-table-header-actions">
             <Pill tone="amber">{pendingLeaves.length} awaiting</Pill>
             <Button variant="outline" small onClick={() => setPage("leave")}>View all</Button>
           </div>
@@ -322,14 +229,14 @@ export default function DashboardPage({ setPage }) {
               columns={["Employee", "Type", "Dates", "Days", "Status"]}
               rows={pendingLeaves}
               renderRow={(l) => (
-                <tr key={l.id} className="hoverable" style={{ borderBottom: `1px solid ${C.border}` }}>
-                  <td style={{ padding: "10px 14px" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}><Avatar name={l.name} size={26} />{l.name}</div>
+                <tr key={l.id} className="hoverable dashboard-table-row">
+                  <td className="dashboard-table-cell">
+                    <div className="dashboard-employee-cell"><Avatar name={l.name} size={26} />{l.name}</div>
                   </td>
-                  <td style={{ padding: "10px 14px", color: C.slate }}>{l.type}</td>
-                  <td style={{ padding: "10px 14px", color: C.slate }}>{l.from} → {l.to}</td>
-                  <td style={{ padding: "10px 14px", color: C.slate }}>{l.days}d</td>
-                  <td style={{ padding: "10px 14px" }}><Pill tone={statusTone(l.status)}>{l.status}</Pill></td>
+                  <td className="dashboard-table-cell muted">{l.type}</td>
+                  <td className="dashboard-table-cell muted">{l.from} → {l.to}</td>
+                  <td className="dashboard-table-cell muted">{l.days}d</td>
+                  <td className="dashboard-table-cell"><Pill tone={statusTone(l.status)}>{l.status}</Pill></td>
                 </tr>
               )}
             />

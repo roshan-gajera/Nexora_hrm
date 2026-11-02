@@ -304,6 +304,36 @@ class Candidate(models.Model):
     def __str__(self):
         return self.name
 
+    @property
+    def salary(self):
+        if hasattr(self, "_salary") and self._salary is not None:
+            return self._salary
+        if self.notes:
+            import re
+            m = re.search(r'(?:salary|offered_salary|offer):\s*([\d,.]+)', self.notes, re.IGNORECASE)
+            if m:
+                try:
+                    return float(m.group(1).replace(',', ''))
+                except ValueError:
+                    pass
+        return 0
+
+    @salary.setter
+    def salary(self, value):
+        try:
+            self._salary = float(value) if value is not None and value != "" else 0
+        except (ValueError, TypeError):
+            self._salary = 0
+        val_str = f"salary:{self._salary}"
+        import re
+        if self.notes:
+            if re.search(r'(?:salary|offered_salary|offer):\s*[\d,.]+', self.notes, re.IGNORECASE):
+                self.notes = re.sub(r'(?:salary|offered_salary|offer):\s*[\d,.]+', val_str, self.notes, flags=re.IGNORECASE)
+            else:
+                self.notes = f"{self.notes.strip()}\n{val_str}"
+        else:
+            self.notes = val_str
+
 
 class PerformanceReview(models.Model):
     class Status(models.TextChoices):

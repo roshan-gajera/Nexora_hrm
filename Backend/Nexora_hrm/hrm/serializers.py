@@ -4,6 +4,7 @@ from .models import (
     Employee, Expense, Holiday, Job, LeaveBalance, LeaveRequest, LeaveType,
     Notification, Overtime, Payroll, PerformanceReview, Shift, Training, TrainingEnrollment,
 )
+from django.utils import timezone
 
 
 # ── Department ────────────────────────────────────────────────────────────────
@@ -144,16 +145,17 @@ class AttendanceSerializer(serializers.ModelSerializer):
 
 
 class AttendanceListSerializer(serializers.ModelSerializer):
-    id         = serializers.IntegerField(read_only=True)
-    employeeId = serializers.CharField(source="employee.employee_code",        read_only=True, default="—")
-    name       = serializers.CharField(source="employee.name",                 read_only=True, default="Unknown")
-    department = serializers.CharField(source="employee.department.name",      read_only=True, default="—")
-    checkIn    = serializers.CharField(source="check_in")
-    checkOut   = serializers.CharField(source="check_out")
+    id           = serializers.IntegerField(read_only=True)
+    employeeDbId = serializers.IntegerField(source="employee.id",             read_only=True)
+    employeeId   = serializers.CharField(source="employee.employee_code",        read_only=True, default="—")
+    name         = serializers.CharField(source="employee.name",                 read_only=True, default="Unknown")
+    department   = serializers.CharField(source="employee.department.name",      read_only=True, default="—")
+    checkIn      = serializers.CharField(source="check_in")
+    checkOut     = serializers.CharField(source="check_out")
 
     class Meta:
         model  = Attendance
-        fields = ("id", "employeeId", "name", "department", "checkIn", "checkOut", "status", "date")
+        fields = ("id", "employeeDbId", "employeeId", "name", "department", "checkIn", "checkOut", "status", "date")
 
 
 # ── Payroll ───────────────────────────────────────────────────────────────────
@@ -203,7 +205,7 @@ class ExpenseSerializer(serializers.ModelSerializer):
 # ── Recruitment ───────────────────────────────────────────────────────────────
 
 class JobSerializer(serializers.ModelSerializer):
-    department_name = serializers.CharField(source="department.name", read_only=True)
+    department_name = serializers.CharField(source="department.name", read_only=True, default="General")
     applicants      = serializers.ReadOnlyField()
 
     class Meta:
@@ -213,31 +215,60 @@ class JobSerializer(serializers.ModelSerializer):
 
 
 class JobListSerializer(serializers.ModelSerializer):
-    department = serializers.CharField(source="department.name", read_only=True)
-    type       = serializers.CharField(source="job_type")
-    applicants = serializers.ReadOnlyField()
+    department      = serializers.CharField(source="department.name", read_only=True, default="General")
+    department_name = serializers.CharField(source="department.name", read_only=True, default="General")
+    type            = serializers.CharField(source="job_type")
+    job_type        = serializers.CharField(read_only=True)
+    applicants      = serializers.ReadOnlyField()
 
     class Meta:
         model  = Job
-        fields = ("id", "title", "department", "location", "type", "openings", "status", "applicants")
+        fields = ("id", "title", "department", "department_name", "location", "type", "job_type", "openings", "status", "description", "applicants", "created_at")
 
 
 class CandidateSerializer(serializers.ModelSerializer):
-    job_title = serializers.CharField(source="job.title", read_only=True)
+    job_title   = serializers.CharField(source="job.title", read_only=True)
+    jobTitle    = serializers.CharField(source="job.title", read_only=True)
+    appliedDate = serializers.DateField(source="applied_date", read_only=True)
+    salary      = serializers.FloatField(required=False, default=0)
 
     class Meta:
         model  = Candidate
-        fields = ("id", "job", "job_title", "name", "email", "phone", "resume", "stage", "applied_date", "notes")
+        fields = ("id", "job", "job_title", "jobTitle", "name", "email", "phone", "resume", "stage", "salary", "applied_date", "appliedDate", "notes")
+        extra_kwargs = {
+            "applied_date": {"required": False},
+        }
+
+    def create(self, validated_data):
+        salary_val = validated_data.pop("salary", 0)
+        if not validated_data.get("applied_date"):
+            validated_data["applied_date"] = timezone.localdate()
+        candidate = super().create(validated_data)
+        if salary_val:
+            candidate.salary = salary_val
+            candidate.save(update_fields=["notes"])
+        return candidate
+
+    def update(self, instance, validated_data):
+        salary_val = validated_data.pop("salary", None)
+        candidate = super().update(instance, validated_data)
+        if salary_val is not None:
+            candidate.salary = salary_val
+            candidate.save(update_fields=["notes"])
+        return candidate
 
 
 class CandidateListSerializer(serializers.ModelSerializer):
-    jobId       = serializers.IntegerField(source="job_id",    read_only=True)
-    jobTitle    = serializers.CharField(source="job.title",    read_only=True)
-    appliedDate = serializers.DateField(source="applied_date")
+    jobId        = serializers.IntegerField(source="job_id",       read_only=True)
+    jobTitle     = serializers.CharField(source="job.title",       read_only=True)
+    job_title    = serializers.CharField(source="job.title",       read_only=True)
+    appliedDate  = serializers.DateField(source="applied_date",   read_only=True)
+    applied_date = serializers.DateField(read_only=True)
+    salary       = serializers.FloatField(read_only=True)
 
     class Meta:
         model  = Candidate
-        fields = ("id", "name", "jobId", "jobTitle", "stage", "email", "appliedDate")
+        fields = ("id", "name", "jobId", "jobTitle", "job_title", "stage", "email", "salary", "appliedDate", "applied_date")
 
 
 # ── Performance ───────────────────────────────────────────────────────────────

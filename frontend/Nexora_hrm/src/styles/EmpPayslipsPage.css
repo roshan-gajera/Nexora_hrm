@@ -1,0 +1,266 @@
+/* EmpPayslipsPage.css */
+.emp-payslips-loading {
+  padding: 40px;
+  text-align: center;
+  color: var(--color-slate, #5c6b7a);
+  font-family: var(--font-body, "Inter", sans-serif);
+}
+
+/* Overview Cards */
+.emp-payslips-overview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.emp-payslips-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.emp-payslips-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.emp-payslips-card-label {
+  font-family: var(--font-body, "Inter", sans-serif);
+  font-size: 12.5px;
+  color: var(--color-slate, #5c6b7a);
+  font-weight: 600;
+}
+
+.emp-payslips-icon-box {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.emp-payslips-card-val {
+  font-family: var(--font-display, "Sora", sans-serif);
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--color-ink, #14213d);
+}
+
+.emp-payslips-card-sub {
+  font-family: var(--font-body, "Inter", sans-serif);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.emp-payslips-card-sub.teal {
+  color: var(--color-teal, #1f8a70);
+}
+
+.emp-payslips-card-sub.blue {
+  color: var(--color-blue, #2a5c9a);
+}
+
+.emp-payslips-card-sub.amber {
+  color: var(--color-amber, #b9790a);
+}
+
+/* Table */
+.emp-payslips-table-card {
+  padding: 0;
+}
+
+.emp-payslips-table-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--color-border, #e2e7ef);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.emp-payslips-table-title {
+  font-family: var(--font-display, "Sora", sans-serif);
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--color-ink, #14213d);
+}
+
+.emp-payslips-table-row {
+  border-bottom: 1px solid var(--color-border, #e2e7ef);
+}
+
+.emp-payslips-table-cell {
+  padding: 12px 14px;
+}
+
+.emp-payslips-month-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.emp-payslips-calendar-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: var(--color-blue-soft, #e6eef7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.emp-payslips-month-name {
+  font-weight: 600;
+  color: var(--color-ink, #14213d);
+}
+
+.emp-payslips-muted-val {
+  color: var(--color-slate, #5c6b7a);
+}
+
+.emp-payslips-allowance-val {
+  color: var(--color-teal, #1f8a70);
+}
+
+.emp-payslips-deduction-val {
+  color: var(--color-coral, #c4432f);
+}
+
+.emp-payslips-net-text {
+  font-family: var(--font-display, "Sora", sans-serif);
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--color-ink, #14213d);
+}
+
+.emp-payslips-action-group {
+  display: flex;
+  gap: 8px;
+}
+
+.emp-payslips-icon-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border: none;
+  transition: opacity 0.2s;
+}
+
+.emp-payslips-icon-btn:hover {
+  opacity: 0.85;
+}
+
+.emp-payslips-icon-btn.blue {
+  background: var(--color-blue-soft, #e6eef7);
+}
+
+.emp-payslips-icon-btn.teal {
+  background: var(--color-teal-soft, #e4f3ef);
+}
+
+/* Modal detail */
+.payslip-detail-info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.payslip-detail-info-label {
+  font-family: var(--font-body, "Inter", sans-serif);
+  font-size: 11px;
+  color: var(--color-slate-light, #8a97a6);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  margin-bottom: 3px;
+}
+
+.payslip-detail-info-val {
+  font-family: var(--font-body, "Inter", sans-serif);
+  font-size: 13.5px;
+  color: var(--color-ink, #14213d);
+  font-weight: 600;
+}
+
+.payslip-detail-breakdown-card {
+  background: var(--color-canvas, #f4f6f9);
+  border-radius: 10px;
+  padding: 18px;
+  margin-bottom: 16px;
+}
+
+.payslip-detail-breakdown-title {
+  font-family: var(--font-display, "Sora", sans-serif);
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--color-ink, #14213d);
+  margin: 0 0 12px;
+}
+
+.payslip-detail-breakdown-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--color-border, #e2e7ef);
+}
+
+.payslip-detail-breakdown-row:last-child {
+  border-bottom: none;
+}
+
+.payslip-detail-breakdown-label {
+  font-family: var(--font-body, "Inter", sans-serif);
+  font-size: 13px;
+  color: var(--color-slate, #5c6b7a);
+}
+
+.payslip-detail-breakdown-amt {
+  font-family: var(--font-mono, monospace);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.payslip-detail-breakdown-amt.earning {
+  color: var(--color-teal, #1f8a70);
+}
+
+.payslip-detail-breakdown-amt.deduction {
+  color: var(--color-coral, #c4432f);
+}
+
+.payslip-detail-net-banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 18px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, var(--color-ink, #14213d) 0%, #1e2e52 100%);
+  margin-bottom: 16px;
+}
+
+.payslip-detail-net-label {
+  font-family: var(--font-display, "Sora", sans-serif);
+  font-weight: 700;
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.payslip-detail-net-val {
+  font-family: var(--font-display, "Sora", sans-serif);
+  font-weight: 800;
+  font-size: 22px;
+  color: #ffffff;
+}
+
+.payslip-detail-footer {
+  display: flex;
+  justify-content: flex-end;
+}
+

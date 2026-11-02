@@ -1,15 +1,16 @@
 import React, { useState, useEffect, useMemo } from "react";
 import {
-  Clock, Calendar, Search, Download, RefreshCw, Plus,
-  UserCheck, AlertCircle, Home, Building2, CheckCircle2,
-  CalendarDays, Edit2, Filter
+  Clock, Download, RefreshCw, Plus,
+  AlertCircle, Home, CheckCircle2,
+  Edit2,Search
 } from "lucide-react";
 import { C } from "../constants/theme";
 import { statusTone, exportToCSV } from "../utils/helpers";
-import { Card, PageHeader, Table, Avatar, Pill, Button, Modal, Input, Select, EmptyState } from "../components/ui";
+import { Card, PageHeader, Table, Avatar, Pill, Button, Modal, Input, EmptyState } from "../components/ui";
 import { fetchAttendance, saveAttendance } from "../api/attendanceApi";
 import { fetchEmployees } from "../api/employeesApi";
 import { useToast } from "../context/ToastContext";
+import "../styles/AttendancePage.css";
 
 /** Helper to parse time string like "09:30 AM" into Date for duration calculation */
 function parseTime(timeStr, dateStr) {
@@ -103,100 +104,65 @@ export default function AttendancePage() {
     loadAttendance();
   }, []);
 
-  // Filter attendance records based on current date mode, status, dept, and search query
+  // Unique departments for filter dropdown
+  const departments = useMemo(() => {
+    const set = new Set();
+    attendance.forEach((a) => {
+      if (a.department) set.add(a.department);
+    });
+    return ["All", ...Array.from(set)];
+  }, [attendance]);
+
+  // Filtered dataset
   const filteredList = useMemo(() => {
-    return attendance.filter((item) => {
+    const todayStr = getTodayDateString();
+
+    return attendance.filter((a) => {
       // Date filter
-      if (dateFilterMode === "today" && item.date !== getTodayDateString()) {
-        return false;
-      }
-      if (dateFilterMode === "custom" && item.date !== selectedDate) {
-        return false;
-      }
+      if (dateFilterMode === "today" && a.date !== todayStr) return false;
+      if (dateFilterMode === "custom" && a.date !== selectedDate) return false;
 
       // Status filter
-      if (statusFilter !== "All" && item.status !== statusFilter) {
-        return false;
-      }
+      if (statusFilter !== "All" && a.status !== statusFilter) return false;
 
       // Department filter
-      if (deptFilter !== "All" && (item.department || "").toLowerCase() !== deptFilter.toLowerCase()) {
-        return false;
-      }
+      if (deptFilter !== "All" && a.department !== deptFilter) return false;
 
       // Search query
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
-        const nameMatch = (item.name || "").toLowerCase().includes(q);
-        const codeMatch = (item.employeeId || "").toLowerCase().includes(q);
-        const deptMatch = (item.department || "").toLowerCase().includes(q);
-        if (!nameMatch && !codeMatch && !deptMatch) return false;
+        const matchName = (a.name || "").toLowerCase().includes(q);
+        const matchCode = (a.employeeId || "").toLowerCase().includes(q);
+        const matchDept = (a.department || "").toLowerCase().includes(q);
+        if (!matchName && !matchCode && !matchDept) return false;
       }
 
       return true;
     });
   }, [attendance, dateFilterMode, selectedDate, statusFilter, deptFilter, searchQuery]);
 
-  // Unique departments for filter
-  const departments = useMemo(() => {
-    const set = new Set();
-    attendance.forEach((a) => {
-      if (a.department && a.department !== "—") set.add(a.department);
+  // Statistics calculation for the current view
+  const counts = useMemo(() => {
+    const res = { Present: 0, WFH: 0, Late: 0, Absent: 0 };
+    filteredList.forEach((a) => {
+      if (res[a.status] !== undefined) res[a.status]++;
     });
-    return ["All", ...Array.from(set)];
-  }, [attendance]);
+    return res;
+  }, [filteredList]);
 
-  // Counts based on the current date context
-  const contextRecords = useMemo(() => {
-    if (dateFilterMode === "today") {
-      return attendance.filter((a) => a.date === getTodayDateString());
-    }
-    if (dateFilterMode === "custom") {
-      return attendance.filter((a) => a.date === selectedDate);
-    }
-    return attendance;
-  }, [attendance, dateFilterMode, selectedDate]);
-
-  const counts = {
-    Present: contextRecords.filter((a) => a.status === "Present").length,
-    Late: contextRecords.filter((a) => a.status === "Late").length,
-    WFH: contextRecords.filter((a) => a.status === "WFH").length,
-    Absent: contextRecords.filter((a) => a.status === "Absent").length,
-  };
-
-  const totalEmployeesCount = employees.length || contextRecords.length || 1;
-  const totalPresentToday = counts.Present + counts.Late + counts.WFH;
-  const attendanceRate = Math.round((totalPresentToday / Math.max(1, totalEmployeesCount)) * 100);
-
-  // Handle Export CSV
+  // Export CSV
   const handleExport = () => {
-    if (filteredList.length === 0) {
-      toast?.("No attendance records to export.", "warning");
-      return;
-    }
-    const exportData = filteredList.map((a) => ({
-      Employee: a.name,
-      Employee_ID: a.employeeId,
-      Department: a.department,
-      Date: a.date,
-      Check_In: a.checkIn,
-      Check_Out: a.checkOut,
-      Duration: calculateDuration(a.checkIn, a.checkOut, a.date),
-      Status: a.status,
-    }));
-    exportToCSV(exportData, `Attendance_${dateFilterMode}_${selectedDate}.csv`);
-    toast?.("Attendance records exported successfully!", "success");
+    exportToCSV(filteredList, `Attendance_${dateFilterMode}_${new Date().toISOString().slice(0, 10)}.csv`);
   };
 
-  // Open modal for manual marking or editing
-  const openMarkModal = (item = null) => {
-    if (item) {
-      const matchedEmp = employees.find((e) => e.name === item.name || e.employee_code === item.employeeId || e.id === item.employeeId);
-      setFormEmployee(matchedEmp ? matchedEmp.pk || matchedEmp.id : "");
-      setFormDate(item.date || getTodayDateString());
-      setFormCheckIn(item.checkIn && item.checkIn !== "--" ? item.checkIn : "09:30 AM");
-      setFormCheckOut(item.checkOut && item.checkOut !== "--" ? item.checkOut : "06:30 PM");
-      setFormStatus(item.status || "Present");
+  // Open Mark Modal
+  const openMarkModal = (existing = null) => {
+    if (existing) {
+      setFormEmployee(existing.employeeDbId || existing.employeeId || "");
+      setFormDate(existing.date || getTodayDateString());
+      setFormCheckIn(existing.checkIn && existing.checkIn !== "--" ? existing.checkIn : "09:30 AM");
+      setFormCheckOut(existing.checkOut && existing.checkOut !== "--" ? existing.checkOut : "06:30 PM");
+      setFormStatus(existing.status === "Absent" ? "Present" : (existing.status || "Present"));
     } else {
       setFormEmployee(employees[0]?.pk || employees[0]?.id || "");
       setFormDate(getTodayDateString());
@@ -243,33 +209,18 @@ export default function AttendancePage() {
   return (
     <div className="page-enter">
       {/* Page Header */}
-      <PageHeader
-        title="Attendance & Check-ins"
-        subtitle={`Live monitoring across the organization · ${todayLabel}`}
-        action={
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <Button
-              variant="outline"
-              icon={RefreshCw}
-              small
-              onClick={() => loadAttendance(true)}
-            >
+      <PageHeader title="Attendance & Check-ins" subtitle={`Live monitoring across the organization · ${todayLabel}`} action={
+          <div className="attendance-header-actions">
+
+            <Button variant="outline" icon={RefreshCw} small onClick={() => loadAttendance(true)}>
               {refreshing ? "Refreshing..." : "Refresh"}
             </Button>
-            <Button
-              variant="outline"
-              icon={Download}
-              small
-              onClick={handleExport}
-            >
+            
+            <Button variant="outline" icon={Download} small onClick={handleExport}>
               Export CSV
             </Button>
-            <Button
-              variant="primary"
-              icon={Plus}
-              small
-              onClick={() => openMarkModal()}
-            >
+
+            <Button variant="primary" icon={Plus} small onClick={() => openMarkModal()}>
               Mark Attendance
             </Button>
           </div>
@@ -277,186 +228,101 @@ export default function AttendancePage() {
       />
 
       {/* Date Filtering Bar */}
-      <div
-        style={{
-          background: C.panel,
-          border: `1px solid ${C.border}`,
-          borderRadius: 12,
-          padding: "14px 18px",
-          marginBottom: 20,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          flexWrap: "wrap",
-          gap: 12,
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-          <span style={{ fontFamily: "Inter, sans-serif", fontSize: 13, fontWeight: 600, color: C.slate }}>
+      <div className="attendance-date-bar">
+        <div className="attendance-date-group">
+          <span className="attendance-date-label">
             Date View:
           </span>
-          <div style={{ display: "flex", background: C.canvas, padding: 3, borderRadius: 8, gap: 4 }}>
-            <button
-              type="button"
-              onClick={() => setDateFilterMode("all")}
-              style={{
-                border: "none",
-                background: dateFilterMode === "all" ? "#fff" : "transparent",
-                color: dateFilterMode === "all" ? C.ink : C.slate,
-                padding: "6px 14px",
-                borderRadius: 6,
-                fontFamily: "Inter, sans-serif",
-                fontSize: 12.5,
-                fontWeight: dateFilterMode === "all" ? 600 : 500,
-                cursor: "pointer",
-                boxShadow: dateFilterMode === "all" ? "0 1px 4px rgba(0,0,0,0.08)" : "none",
-                transition: "all 0.15s ease",
-              }}
-            >
-              All Records
-            </button>
-            <button
-              type="button"
-              onClick={() => setDateFilterMode("today")}
-              style={{
-                border: "none",
-                background: dateFilterMode === "today" ? "#fff" : "transparent",
-                color: dateFilterMode === "today" ? C.teal : C.slate,
-                padding: "6px 14px",
-                borderRadius: 6,
-                fontFamily: "Inter, sans-serif",
-                fontSize: 12.5,
-                fontWeight: dateFilterMode === "today" ? 700 : 500,
-                cursor: "pointer",
-                boxShadow: dateFilterMode === "today" ? "0 1px 4px rgba(0,0,0,0.08)" : "none",
-                transition: "all 0.15s ease",
-                display: "flex",
-                alignItems: "center",
-                gap: 6,
-              }}
-            >
-              {/* <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#10B981" }} /> */}
+          <div className="attendance-date-pill-group">
+            <button type="button" onClick={() => setDateFilterMode("today")} className={`attendance-date-pill-btn ${dateFilterMode === "today" ? "active-teal" : ""}`}>
               Today Live
             </button>
-            <button
-              type="button"
-              onClick={() => setDateFilterMode("custom")}
-              style={{
-                border: "none",
-                background: dateFilterMode === "custom" ? "#fff" : "transparent",
-                color: dateFilterMode === "custom" ? C.ink : C.slate,
-                padding: "6px 14px",
-                borderRadius: 6,
-                fontFamily: "Inter, sans-serif",
-                fontSize: 12.5,
-                fontWeight: dateFilterMode === "custom" ? 600 : 500,
-                cursor: "pointer",
-                boxShadow: dateFilterMode === "custom" ? "0 1px 4px rgba(0,0,0,0.08)" : "none",
-                transition: "all 0.15s ease",
-              }}
-            >
+            
+            <button type="button" onClick={() => setDateFilterMode("all")} className={`attendance-date-pill-btn ${dateFilterMode === "all" ? "active" : ""}`}>
+              All Records
+            </button>
+
+            <button type="button" onClick={() => setDateFilterMode("custom")} className={`attendance-date-pill-btn ${dateFilterMode === "custom" ? "active" : ""}`}>
               Pick Date
             </button>
+
           </div>
 
           {dateFilterMode === "custom" && (
-            <input
-              type="date"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              style={{
-                border: `1px solid ${C.border}`,
-                borderRadius: 8,
-                padding: "5px 10px",
-                fontFamily: "Inter, sans-serif",
-                fontSize: 13,
-                color: C.ink,
-                outline: "none",
-              }}
-            />
+            <input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} className="attendance-date-input"/>
           )}
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-          <div style={{ fontFamily: "Inter, sans-serif", fontSize: 13, color: C.slate }}>
-            Showing: <strong style={{ color: C.ink }}>{filteredList.length}</strong> records
+        <div>
+          <div className="attendance-record-count">
+            Showing: <strong>{filteredList.length}</strong> records
           </div>
         </div>
       </div>
 
       {/* KPI Cards */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 16, marginBottom: 20 }}>
+      <div className="attendance-kpi-grid">
         <Card accent={C.teal}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-            <span style={{ fontSize: 12.5, color: C.slate, fontWeight: 600 }}>Present</span>
-            <div style={{ width: 28, height: 28, borderRadius: 6, background: C.tealSoft, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div className="attendance-kpi-header">
+            <span className="attendance-kpi-label">Present</span>
+            <div className="attendance-kpi-icon-box" style={{ background: C.tealSoft }}>
               <CheckCircle2 size={15} color={C.teal} />
             </div>
           </div>
-          <div style={{ fontFamily: "Sora, sans-serif", fontSize: 26, fontWeight: 700, color: C.ink }}>
+          <div className="attendance-kpi-val">
             {counts.Present}
           </div>
-          <div style={{ fontSize: 11.5, color: C.slateLight, marginTop: 4 }}>In-office checked in</div>
+          <div className="attendance-kpi-sub">In-office checked in</div>
         </Card>
 
         <Card accent={C.blue}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-            <span style={{ fontSize: 12.5, color: C.slate, fontWeight: 600 }}>WFH</span>
-            <div style={{ width: 28, height: 28, borderRadius: 6, background: C.blueSoft, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div className="attendance-kpi-header">
+            <span className="attendance-kpi-label">WFH</span>
+            <div className="attendance-kpi-icon-box" style={{ background: C.blueSoft }}>
               <Home size={15} color={C.blue} />
             </div>
           </div>
-          <div style={{ fontFamily: "Sora, sans-serif", fontSize: 26, fontWeight: 700, color: C.ink }}>
+          <div className="attendance-kpi-val">
             {counts.WFH}
           </div>
-          <div style={{ fontSize: 11.5, color: C.slateLight, marginTop: 4 }}>Remote check-ins</div>
+          <div className="attendance-kpi-sub">Remote check-ins</div>
         </Card>
 
         <Card accent={C.amber}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-            <span style={{ fontSize: 12.5, color: C.slate, fontWeight: 600 }}>Late</span>
-            <div style={{ width: 28, height: 28, borderRadius: 6, background: C.amberSoft, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div className="attendance-kpi-header">
+            <span className="attendance-kpi-label">Late</span>
+            <div className="attendance-kpi-icon-box" style={{ background: C.amberSoft }}>
               <AlertCircle size={15} color={C.amber} />
             </div>
           </div>
-          <div style={{ fontFamily: "Sora, sans-serif", fontSize: 26, fontWeight: 700, color: C.ink }}>
+          <div className="attendance-kpi-val">
             {counts.Late}
           </div>
-          <div style={{ fontSize: 11.5, color: C.slateLight, marginTop: 4 }}>After shift grace period</div>
+          <div className="attendance-kpi-sub">After shift grace period</div>
         </Card>
 
         <Card accent={C.coral}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-            <span style={{ fontSize: 12.5, color: C.slate, fontWeight: 600 }}>Absent</span>
-            <div style={{ width: 28, height: 28, borderRadius: 6, background: C.coralSoft, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div className="attendance-kpi-header">
+            <span className="attendance-kpi-label">Absent</span>
+            <div className="attendance-kpi-icon-box" style={{ background: C.coralSoft }}>
               <AlertCircle size={15} color={C.coral} />
             </div>
           </div>
-          <div style={{ fontFamily: "Sora, sans-serif", fontSize: 26, fontWeight: 700, color: C.ink }}>
+          <div className="attendance-kpi-val">
             {counts.Absent}
           </div>
-          <div style={{ fontSize: 11.5, color: C.slateLight, marginTop: 4 }}>No check-in recorded</div>
+          <div className="attendance-kpi-sub">No check-in recorded</div>
         </Card>
       </div>
 
       {/* Main Table Card */}
       <Card style={{ padding: 0 }}>
         {/* Search & Filter Toolbars */}
-        <div
-          style={{
-            padding: "16px 20px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            borderBottom: `1px solid ${C.border}`,
-            flexWrap: "wrap",
-            gap: 12,
-          }}
-        >
+        <div className="attendance-toolbar">
           {/* Status Pills */}
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <div className="attendance-status-pills">
             {["All", "Present", "WFH", "Late", "Absent"].map((s) => (
-              <div key={s} onClick={() => setStatusFilter(s)} style={{ cursor: "pointer" }}>
+              <div key={s} onClick={() => setStatusFilter(s)} className="attendance-status-pill-item">
                 <Pill tone={s === statusFilter ? statusTone(s === "All" ? "Active" : s) : "slate"}>
                   {s}
                 </Pill>
@@ -465,15 +331,15 @@ export default function AttendancePage() {
           </div>
 
           {/* Search & Department Filters */}
-          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 6, background: C.canvas, padding: "6px 12px", borderRadius: 8, width: 220 }}>
+          <div className="attendance-search-filter-group">
+            <div className="attendance-search-box">
               <Search size={14} color={C.slateLight} />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search name, code..."
-                style={{ border: "none", background: "transparent", outline: "none", fontFamily: "Inter, sans-serif", fontSize: 13, width: "100%", color: C.ink }}
+                className="attendance-search-input"
               />
             </div>
 
@@ -481,16 +347,7 @@ export default function AttendancePage() {
               <select
                 value={deptFilter}
                 onChange={(e) => setDeptFilter(e.target.value)}
-                style={{
-                  border: `1px solid ${C.border}`,
-                  borderRadius: 8,
-                  padding: "6px 10px",
-                  fontFamily: "Inter, sans-serif",
-                  fontSize: 13,
-                  color: C.ink,
-                  outline: "none",
-                  background: "#fff",
-                }}
+                className="attendance-dept-select"
               >
                 {departments.map((d) => (
                   <option key={d} value={d}>
@@ -504,11 +361,11 @@ export default function AttendancePage() {
 
         {/* Table Content */}
         {loading ? (
-          <div style={{ padding: 40, textAlign: "center", color: C.slate }}>
+          <div className="attendance-loading">
             Loading attendance records...
           </div>
         ) : filteredList.length === 0 ? (
-          <div style={{ padding: 36 }}>
+          <div className="attendance-empty">
             <EmptyState text="No attendance records found matching your filters." />
           </div>
         ) : (
@@ -518,52 +375,43 @@ export default function AttendancePage() {
             renderRow={(a, idx) => {
               const duration = calculateDuration(a.checkIn, a.checkOut, a.date);
               return (
-                <tr key={a.id || idx} className="hoverable" style={{ borderBottom: `1px solid ${C.border}` }}>
-                  <td style={{ padding: "12px 14px", display: "flex", alignItems: "center", gap: 10 }}>
-                    <Avatar name={a.name} size={30} />
-                    <span style={{ fontWeight: 600, color: C.ink }}>{a.name}</span>
+                <tr key={a.id || idx} className="hoverable attendance-table-row">
+                  <td className="attendance-table-cell">
+                    <div className="attendance-employee-cell">
+                      <Avatar name={a.name} size={30} />
+                      <span className="attendance-employee-name">{a.name}</span>
+                    </div>
                   </td>
-                  <td style={{ padding: "12px 14px", fontFamily: "IBM Plex Mono, monospace", fontSize: 13, color: C.slate }}>
+                  <td className="attendance-table-cell attendance-code-cell">
                     {a.employeeId}
                   </td>
-                  <td style={{ padding: "12px 14px", color: C.slate }}>
+                  <td className="attendance-table-cell attendance-muted-cell">
                     {a.department || "—"}
                   </td>
-                  <td style={{ padding: "12px 14px", color: C.slate, whiteSpace: "nowrap" }}>
+                  <td className="attendance-table-cell attendance-muted-cell" style={{ whiteSpace: "nowrap" }}>
                     {a.date}
                   </td>
-                  <td style={{ padding: "12px 14px", color: C.ink, fontFamily: "IBM Plex Mono, monospace", fontSize: 13 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <td className="attendance-table-cell attendance-time-cell">
+                    <div className="attendance-time-flex">
                       <Clock size={13} color={C.teal} />
                       {a.checkIn || "--"}
                     </div>
                   </td>
-                  <td style={{ padding: "12px 14px", color: C.slate, fontFamily: "IBM Plex Mono, monospace", fontSize: 13 }}>
+                  <td className="attendance-table-cell attendance-muted-cell" style={{ fontFamily: "IBM Plex Mono, monospace", fontSize: 13 }}>
                     {a.checkOut || "--"}
                   </td>
-                  <td style={{ padding: "12px 14px", fontFamily: "IBM Plex Mono, monospace", fontSize: 13, color: duration !== "--" ? C.teal : C.slateLight, fontWeight: 600 }}>
+                  <td className={`attendance-table-cell attendance-hours-cell ${duration !== "--" ? "active" : "muted"}`}>
                     {duration}
                   </td>
-                  <td style={{ padding: "12px 14px" }}>
+                  <td className="attendance-table-cell">
                     <Pill tone={statusTone(a.status)}>{a.status}</Pill>
                   </td>
-                  <td style={{ padding: "12px 14px" }}>
+                  <td className="attendance-table-cell">
                     <button
                       type="button"
                       onClick={() => openMarkModal(a)}
                       title="Edit attendance"
-                      style={{
-                        background: "none",
-                        border: "none",
-                        cursor: "pointer",
-                        color: C.slateLight,
-                        display: "flex",
-                        alignItems: "center",
-                        padding: 4,
-                        borderRadius: 4,
-                      }}
-                      onMouseEnter={(e) => (e.currentTarget.style.color = C.ink)}
-                      onMouseLeave={(e) => (e.currentTarget.style.color = C.slateLight)}
+                      className="attendance-edit-btn"
                     >
                       <Edit2 size={14} />
                     </button>
@@ -579,26 +427,15 @@ export default function AttendancePage() {
       {isModalOpen && (
         <Modal title="Mark / Edit Attendance" onClose={() => setIsModalOpen(false)}>
           <form onSubmit={handleSaveAttendance}>
-            <label style={{ display: "block", marginBottom: 14 }}>
-              <span style={{ display: "block", fontFamily: "Inter, sans-serif", fontSize: 12.5, fontWeight: 600, color: C.slate, marginBottom: 5 }}>
+            <label className="attendance-form-group">
+              <span className="attendance-form-label">
                 Select Employee *
               </span>
               <select
                 value={formEmployee}
                 onChange={(e) => setFormEmployee(e.target.value)}
                 required
-                style={{
-                  width: "100%",
-                  boxSizing: "border-box",
-                  fontFamily: "Inter, sans-serif",
-                  fontSize: 14,
-                  padding: "9px 12px",
-                  borderRadius: 7,
-                  border: `1px solid ${C.border}`,
-                  outline: "none",
-                  color: C.ink,
-                  background: "#fff",
-                }}
+                className="attendance-form-select"
               >
                 <option value="">-- Choose Employee --</option>
                 {employees.map((e) => (
@@ -617,7 +454,7 @@ export default function AttendancePage() {
               required
             />
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <div className="attendance-form-row">
               <Input
                 label="Check In Time"
                 type="text"
@@ -634,25 +471,14 @@ export default function AttendancePage() {
               />
             </div>
 
-            <label style={{ display: "block", marginBottom: 18 }}>
-              <span style={{ display: "block", fontFamily: "Inter, sans-serif", fontSize: 12.5, fontWeight: 600, color: C.slate, marginBottom: 5 }}>
+            <label className="attendance-form-group" style={{ marginBottom: 18 }}>
+              <span className="attendance-form-label">
                 Attendance Status *
               </span>
               <select
                 value={formStatus}
                 onChange={(e) => setFormStatus(e.target.value)}
-                style={{
-                  width: "100%",
-                  boxSizing: "border-box",
-                  fontFamily: "Inter, sans-serif",
-                  fontSize: 14,
-                  padding: "9px 12px",
-                  borderRadius: 7,
-                  border: `1px solid ${C.border}`,
-                  outline: "none",
-                  color: C.ink,
-                  background: "#fff",
-                }}
+                className="attendance-form-select"
               >
                 <option value="Present">Present</option>
                 <option value="WFH">WFH (Work From Home)</option>
@@ -661,7 +487,7 @@ export default function AttendancePage() {
               </select>
             </label>
 
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+            <div className="attendance-form-actions">
               <Button variant="outline" onClick={() => setIsModalOpen(false)}>
                 Cancel
               </Button>

@@ -6,6 +6,7 @@ import { Card, PageHeader, Button, Input, Select, Table, Modal, Avatar, Pill, Em
 import { useToast } from "../context/ToastContext";
 import { fetchEmployees, createEmployee, updateEmployee, deleteEmployee } from "../api/employeesApi";
 import { fetchDepartments } from "../api/departmentsApi";
+import "../styles/EmployeesPage.css";
 
 function EmployeeForm({ initial, departments, onSave, onCancel }) {
   const [form, setForm] = useState(initial || {
@@ -16,7 +17,7 @@ function EmployeeForm({ initial, departments, onSave, onCancel }) {
 
   return (
     <form onSubmit={(e) => { e.preventDefault(); onSave(form); }}>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+      <div className="employees-form-grid">
         <Input label="Full name"          required value={form.name}     onChange={(e) => set("name",     e.target.value)} />
         <Input label="Email" type="email" required value={form.email}    onChange={(e) => set("email",    e.target.value)} />
         <Input label="Phone"                       value={form.phone}    onChange={(e) => set("phone",    e.target.value)} />
@@ -27,7 +28,7 @@ function EmployeeForm({ initial, departments, onSave, onCancel }) {
         <Input label="Monthly salary"  type="number" value={form.salary}   onChange={(e) => set("salary",   Number(e.target.value))} />
         <Input label="Location" value={form.location} onChange={(e) => set("location", e.target.value)} />
       </div>
-      <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 8 }}>
+      <div className="employees-form-actions">
         <Button variant="outline" onClick={onCancel}>Cancel</Button>
         <Button variant="primary" type="submit">Save employee</Button>
       </div>
@@ -48,19 +49,19 @@ function EmployeeProfileModal({ employee, onClose }) {
   ];
   return (
     <Modal title="Employee profile" onClose={onClose} width={520}>
-      <div style={{ display: "flex", gap: 16, alignItems: "center", marginBottom: 20, padding: "0 0 18px", borderBottom: `1px solid ${C.border}` }}>
+      <div className="employees-profile-header">
         <Avatar name={employee.name} size={64} />
         <div>
-          <div style={{ fontFamily: "Sora, sans-serif", fontWeight: 700, fontSize: 19, color: C.ink }}>{employee.name}</div>
-          <div style={{ color: C.slate, fontSize: 13.5, marginTop: 2 }}>{employee.role} · {employee.department}</div>
-          <div style={{ marginTop: 8 }}><Pill tone={statusTone(employee.status)}>{employee.status}</Pill></div>
+          <div className="employees-profile-name">{employee.name}</div>
+          <div className="employees-profile-sub">{employee.role} · {employee.department}</div>
+          <div className="employees-profile-pill-wrap"><Pill tone={statusTone(employee.status)}>{employee.status}</Pill></div>
         </div>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, fontFamily: "Inter, sans-serif", fontSize: 13.5 }}>
+      <div className="employees-profile-grid">
         {fields.map((f) => (
           <div key={f.label}>
-            <div style={{ color: C.slateLight, fontSize: 11.5, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 3 }}>{f.label}</div>
-            <div style={{ color: C.ink, fontFamily: f.mono ? "IBM Plex Mono, monospace" : "inherit", display: "flex", alignItems: "center", gap: 5 }}>
+            <div className="employees-profile-field-label">{f.label}</div>
+            <div className={`employees-profile-field-val ${f.mono ? "mono" : ""}`}>
               {f.icon}{f.value}
             </div>
           </div>
@@ -189,7 +190,7 @@ export default function EmployeesPage() {
 
   if (loading) {
     return (
-      <div style={{ padding: 40, textAlign: "center", color: C.slate, fontFamily: "Inter, sans-serif" }}>
+      <div className="employees-loading">
         Loading employee data...
       </div>
     );
@@ -201,7 +202,7 @@ export default function EmployeesPage() {
         title="Employees"
         subtitle={`${employees.length} people across ${departments.length} departments`}
         action={
-          <div style={{ display: "flex", gap: 10 }}>
+          <div className="employees-header-actions">
             <Button variant="outline" icon={Download} small onClick={() => exportToCSV(filtered.length ? filtered : employees, "employees.csv")}>Export CSV</Button>
             <Button icon={Plus} onClick={() => { setEditing(null); setShowForm(true); }}>Add employee</Button>
           </div>
@@ -209,9 +210,9 @@ export default function EmployeesPage() {
       />
 
       {/* Status summary pills */}
-      <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
+      <div className="employees-status-pills">
         {STATUS_FILTERS.map((s) => (
-          <div key={s} onClick={() => setStatusFilter(s)} style={{ cursor: "pointer" }}>
+          <div key={s} onClick={() => setStatusFilter(s)} className="employees-status-pill-item">
             <Pill tone={statusFilter === s ? statusTone(s === "All" ? "Active" : s) : "slate"}>
               {s}{s !== "All" && ` (${statusCounts[s] ?? 0})`}
             </Pill>
@@ -220,61 +221,69 @@ export default function EmployeesPage() {
       </div>
 
       {/* Search & filter bar */}
-      <Card style={{ padding: 14, marginBottom: 16 }}>
-        <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, background: C.canvas, borderRadius: 7, padding: "8px 12px", flex: 1, minWidth: 220 }}>
-            <Search size={14} color={C.slateLight} />
-            <input
-              placeholder="Search by name, role or ID"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              style={{ border: "none", background: "transparent", outline: "none", fontFamily: "Inter, sans-serif", fontSize: 13, width: "100%", color: C.ink }}
-            />
+      <div className="employees-search-card">
+        <Card style={{ padding: 14 }}>
+          <div className="employees-search-row">
+            <div className="employees-search-input-box">
+              <Search size={14} color={C.slateLight} />
+              <input
+                placeholder="Search by name, role or ID"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="employees-search-input"
+              />
+            </div>
+            <div className="employees-filter-box">
+              <Filter size={14} color={C.slateLight} />
+              <select
+                value={deptFilter}
+                onChange={(e) => setDeptFilter(e.target.value)}
+                className="employees-filter-select"
+              >
+                <option>All</option>
+                {departments.map((d) => <option key={d.id}>{d.name}</option>)}
+              </select>
+            </div>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <Filter size={14} color={C.slateLight} />
-            <select value={deptFilter} onChange={(e) => setDeptFilter(e.target.value)} style={{ padding: "8px 12px", borderRadius: 7, border: `1px solid ${C.border}`, fontFamily: "Inter, sans-serif", fontSize: 13, color: C.ink, background: "#fff" }}>
-              <option>All</option>
-              {departments.map((d) => <option key={d.id}>{d.name}</option>)}
-            </select>
-          </div>
-        </div>
-      </Card>
+        </Card>
+      </div>
 
       {/* Table */}
-      <Card style={{ padding: 0 }}>
-        <Table
-          columns={["Employee", "Department", "Role", "Status", "Location", "Joined", ""]}
-          rows={[...filtered].sort((a, b) =>
-            a.id.localeCompare(b.id, undefined, { numeric: true })
-          )}
-          renderRow={(e) => (
-            <tr key={e.id} className="hoverable" style={{ borderBottom: `1px solid ${C.border}`, cursor: "pointer" }}>
-              <td style={{ padding: "12px 14px" }} onClick={() => setViewing(e)}>
-                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <Avatar name={e.name} size={34} />
-                  <div>
-                    <div style={{ fontWeight: 600, color: C.ink, fontSize: 13.5 }}>{e.name}</div>
-                    <div style={{ fontSize: 11.5, color: C.slateLight, fontFamily: "IBM Plex Mono, monospace" }}>{e.id}</div>
+      <div className="employees-table-card">
+        <Card style={{ padding: 0 }}>
+          <Table
+            columns={["Employee", "Department", "Role", "Status", "Location", "Joined", ""]}
+            rows={[...filtered].sort((a, b) =>
+              a.id.localeCompare(b.id, undefined, { numeric: true })
+            )}
+            renderRow={(e) => (
+              <tr key={e.id} className="hoverable employees-table-row">
+                <td className="employees-table-cell" onClick={() => setViewing(e)}>
+                  <div className="employees-name-cell">
+                    <Avatar name={e.name} size={34} />
+                    <div>
+                      <div className="employees-name-text">{e.name}</div>
+                      <div className="employees-id-text">{e.id}</div>
+                    </div>
                   </div>
-                </div>
-              </td>
-              <td style={{ padding: "12px 14px", color: C.slate, fontSize: 13 }}>{e.department}</td>
-              <td style={{ padding: "12px 14px", color: C.slate, fontSize: 13 }}>{e.role}</td>
-              <td style={{ padding: "12px 14px" }}><Pill tone={statusTone(e.status)}>{e.status}</Pill></td>
-              <td style={{ padding: "12px 14px", color: C.slate, fontSize: 13 }}>{e.location}</td>
-              <td style={{ padding: "12px 14px", color: C.slateLight, fontSize: 12 }}>{e.joinDate}</td>
-              <td style={{ padding: "12px 14px" }}>
-                <div style={{ display: "flex", gap: 12 }}>
-                  <Pencil size={15} color={C.slate} style={{ cursor: "pointer" }} onClick={(ev) => { ev.stopPropagation(); setEditing(e); setShowForm(true); }} />
-                  <Trash2 size={15} color={C.coral} style={{ cursor: "pointer" }} onClick={(ev) => { ev.stopPropagation(); setDeleteId(e.id); }} />
-                </div>
-              </td>
-            </tr>
-          )}
-        />
-        {filtered.length === 0 && <EmptyState text="No employees match your filters." />}
-      </Card>
+                </td>
+                <td className="employees-table-cell employees-muted-text">{e.department}</td>
+                <td className="employees-table-cell employees-muted-text">{e.role}</td>
+                <td className="employees-table-cell"><Pill tone={statusTone(e.status)}>{e.status}</Pill></td>
+                <td className="employees-table-cell employees-muted-text">{e.location}</td>
+                <td className="employees-table-cell employees-subtle-text">{e.joinDate}</td>
+                <td className="employees-table-cell">
+                  <div className="employees-actions-cell">
+                    <Pencil size={15} color={C.slate} className="employees-action-icon" onClick={(ev) => { ev.stopPropagation(); setEditing(e); setShowForm(true); }} />
+                    <Trash2 size={15} color={C.coral} className="employees-action-icon" onClick={(ev) => { ev.stopPropagation(); setDeleteId(e.id); }} />
+                  </div>
+                </td>
+              </tr>
+            )}
+          />
+          {filtered.length === 0 && <EmptyState text="No employees match your filters." />}
+        </Card>
+      </div>
 
       {/* Add/Edit modal */}
       {showForm && (
@@ -289,10 +298,10 @@ export default function EmployeesPage() {
       {/* Delete confirm modal */}
       {deleteId && (
         <Modal title="Remove employee?" onClose={() => setDeleteId(null)} width={400}>
-          <p style={{ fontFamily: "Inter, sans-serif", fontSize: 13.5, color: C.slate, marginBottom: 20 }}>
+          <p className="employees-delete-desc">
             This action cannot be undone. The employee record will be permanently removed.
           </p>
-          <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+          <div className="employees-delete-actions">
             <Button variant="outline" onClick={() => setDeleteId(null)}>Cancel</Button>
             <Button variant="danger" onClick={confirmDelete}>Yes, remove</Button>
           </div>

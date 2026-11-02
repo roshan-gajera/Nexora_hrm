@@ -49,7 +49,7 @@ export function PageHeader({ title, subtitle, action }) {
   );
 }
 
-export function Button({ children, onClick, variant = "primary", icon: Icon, small, type = "button" }) {
+export function Button({ children, onClick, variant = "primary", icon: Icon, small, type = "button", disabled }) {
   const styles = {
     primary: { background: C.ink,      color: "#fff",    border: `1px solid ${C.ink}`      },
     outline: { background: "transparent", color: C.ink,  border: `1px solid ${C.border}`   },
@@ -58,7 +58,21 @@ export function Button({ children, onClick, variant = "primary", icon: Icon, sma
     teal:    { background: C.teal,      color: "#fff",    border: `1px solid ${C.teal}`     },
   };
   return (
-    <button type={type} onClick={onClick} style={{ display: "inline-flex", alignItems: "center", gap: 6, fontFamily: "Inter, sans-serif", fontWeight: 600, fontSize: small ? 12.5 : 13.5, padding: small ? "6px 12px" : "9px 16px", borderRadius: 7, cursor: "pointer", ...styles[variant] }}>
+    <button
+      type={type}
+      onClick={onClick}
+      disabled={disabled}
+      style={{
+        display: "inline-flex", alignItems: "center", gap: 6,
+        fontFamily: "Inter, sans-serif", fontWeight: 600,
+        fontSize: small ? 12.5 : 13.5,
+        padding: small ? "6px 12px" : "9px 16px",
+        borderRadius: 7,
+        cursor: disabled ? "not-allowed" : "pointer",
+        opacity: disabled ? 0.55 : 1,
+        ...styles[variant],
+      }}
+    >
       {Icon && <Icon size={small ? 14 : 15} />}
       {children}
     </button>

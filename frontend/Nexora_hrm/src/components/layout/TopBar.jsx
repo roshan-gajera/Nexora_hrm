@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { useLocation } from "react-router-dom";
-import { Search, Bell, CheckCheck, X } from "lucide-react";
+import { Search, Bell, CheckCheck, X, KeyRound } from "lucide-react";
 import { C } from "../../constants/theme";
 import { Avatar } from "../ui";
+import ChangePasswordModal from "../common/ChangePasswordModal";
 import {
   fetchNotifications,
   fetchUnreadCount,
@@ -26,7 +27,7 @@ const POLL_INTERVAL = 15_000; // 15 s
 
 export default function TopBar({ onMenu, currentUser, userRole, employees: propEmployees = [], setPage }) {
   const location = useLocation();
-  const isEmpPortal = userRole === "employee" || location.pathname.startsWith("/emp-");
+  const isEmpPortal = userRole === "employee";
 
   const [query,        setQuery]        = useState("");
   const [showResults,  setShowResults]  = useState(false);
@@ -35,6 +36,7 @@ export default function TopBar({ onMenu, currentUser, userRole, employees: propE
   const [unread,        setUnread]      = useState(0);
   const [loadingNotifs, setLoadingNotifs] = useState(false);
   const [localEmployees, setLocalEmployees] = useState([]);
+  const [showChangePassword, setShowChangePassword] = useState(false);
 
   const searchRef  = useRef(null);
   const notifsRef  = useRef(null);
@@ -61,21 +63,19 @@ export default function TopBar({ onMenu, currentUser, userRole, employees: propE
       ).slice(0, 6)
     : [];
 
-  // ── Poll unread count in background (admin portal only) ─────────────────
+  // ── Poll unread count in background ─────────────────
   const refreshUnreadCount = useCallback(async () => {
-    if (isEmpPortal) return;
     try {
       const data = await fetchUnreadCount();
       setUnread(data.unread ?? 0);
     } catch (_) { /* silent – token may not be set yet */ }
-  }, [isEmpPortal]);
+  }, []);
 
   useEffect(() => {
-    if (isEmpPortal) return;
     refreshUnreadCount();
     pollRef.current = setInterval(refreshUnreadCount, POLL_INTERVAL);
     return () => clearInterval(pollRef.current);
-  }, [refreshUnreadCount, isEmpPortal]);
+  }, [refreshUnreadCount]);
 
   // ── Load full list when panel opens ──────────────────────────────────────
   const openNotifs = async () => {
@@ -168,16 +168,15 @@ export default function TopBar({ onMenu, currentUser, userRole, employees: propE
       {/* Right side */}
       <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
 
-        {/* ── Notifications bell (hidden in Employee Portal) ── */}
-        {!isEmpPortal && (
-          <div ref={notifsRef} style={{ position: "relative" }}>
-            <div
-              onClick={openNotifs}
-              style={{ cursor: "pointer", position: "relative", display: "flex" }}
-              title="Notifications"
-            >
-              <Bell size={19} color={C.slate} />
-              {unread > 0 && (
+        {/* ── Notifications bell ── */}
+        <div ref={notifsRef} style={{ position: "relative" }}>
+          <div
+            onClick={openNotifs}
+            style={{ cursor: "pointer", position: "relative", display: "flex" }}
+            title="Notifications"
+          >
+            <Bell size={19} color={C.slate} />
+            {unread > 0 && (
                 <span style={{
                   position: "absolute", top: -5, right: -6,
                   background: C.coral, color: "#fff",
@@ -205,7 +204,7 @@ export default function TopBar({ onMenu, currentUser, userRole, employees: propE
                   padding: "13px 16px", borderBottom: `1px solid ${C.border}`,
                 }}>
                   <span style={{ fontFamily: "Sora, sans-serif", fontWeight: 700, fontSize: 14, color: C.ink }}>
-                    Notifications {unread > 0 && (
+                    {isEmpPortal ? "Recruitment & Job Openings" : "Notifications"} {unread > 0 && (
                       <span style={{ fontSize: 11, fontWeight: 600, color: C.coral, marginLeft: 4 }}>
                         {unread} new
                       </span>
@@ -231,8 +230,14 @@ export default function TopBar({ onMenu, currentUser, userRole, employees: propE
                   ) : notifications.length === 0 ? (
                     <div style={{ padding: "32px 16px", textAlign: "center", color: C.slateLight, fontSize: 13, fontFamily: "Inter, sans-serif" }}>
                       <Bell size={28} color={C.border} style={{ marginBottom: 8 }} />
-                      <p style={{ margin: 0 }}>No notifications yet.</p>
-                      <p style={{ margin: "4px 0 0", fontSize: 11.5 }}>Events like leave requests, payroll, and attendance will appear here.</p>
+                      <p style={{ margin: 0 }}>
+                        {isEmpPortal ? "No recruitment notifications yet." : "No notifications yet."}
+                      </p>
+                      <p style={{ margin: "4px 0 0", fontSize: 11.5 }}>
+                        {isEmpPortal
+                          ? "New job openings and hiring alerts will appear here."
+                          : "Events like leave requests, payroll, and attendance will appear here."}
+                      </p>
                     </div>
                   ) : (
                     notifications.map((n) => {
@@ -288,7 +293,8 @@ export default function TopBar({ onMenu, currentUser, userRole, employees: propE
               </div>
             )}
           </div>
-        )}
+
+        
 
         {/* User */}
         <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
@@ -301,6 +307,10 @@ export default function TopBar({ onMenu, currentUser, userRole, employees: propE
           </div>
         </div>
       </div>
+
+      {showChangePassword && (
+        <ChangePasswordModal onClose={() => setShowChangePassword(false)} />
+      )}
     </div>
   );
 }

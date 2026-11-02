@@ -1,4 +1,5 @@
 import os
+import uuid
 from datetime import timedelta
 from pathlib import Path
 
@@ -9,6 +10,17 @@ load_dotenv()
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = os.getenv("SECRET_KEY", "django-insecure-nexora-change-me")
+
+# Ephemeral server run session identifier.
+# Preserved during runserver auto-reloads via os.environ,
+# but wiped clean whenever the server process is closed/stopped.
+SERVER_SESSION_ID = os.getenv("SERVER_SESSION_ID")
+if not SERVER_SESSION_ID:
+    SERVER_SESSION_ID = str(uuid.uuid4())
+    os.environ["SERVER_SESSION_ID"] = SERVER_SESSION_ID
+
+JWT_SIGNING_KEY = f"{SECRET_KEY}_{SERVER_SESSION_ID}"
+
 DEBUG = os.getenv("DEBUG", "True").lower() in ("true", "1", "yes")
 ALLOWED_HOSTS = list({h.strip() for h in os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",") if h.strip()} | {"testserver", "localhost", "127.0.0.1"})
 
@@ -124,6 +136,7 @@ REST_FRAMEWORK = {
 
 # ── JWT ───────────────────────────────────────────────────────────────────────
 SIMPLE_JWT = {
+    "SIGNING_KEY":              JWT_SIGNING_KEY,
     "ACCESS_TOKEN_LIFETIME":    timedelta(hours=8),
     "REFRESH_TOKEN_LIFETIME":   timedelta(days=7),
     "ROTATE_REFRESH_TOKENS":    True,

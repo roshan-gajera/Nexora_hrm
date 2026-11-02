@@ -9,14 +9,17 @@ import {
 } from "react-router-dom";
 
 import { C } from "./constants/theme";
-import { ToastProvider } from "./context/ToastContext";
+import { ToastProvider, useToast } from "./context/ToastContext";
 import { getCurrentStoredUser, logoutApi } from "./api/auth";
+import { clearTokens } from "./api/apiClient";
 
 import Sidebar from "./components/layout/Sidebar";
 import TopBar from "./components/layout/TopBar";
 
 import LoginPage      from "./pages/LoginPage";
 import SignupPage     from "./pages/SignupPage";
+import ForgotPasswordPage from "./pages/ForgotPasswordPage";
+import ResetPasswordPage  from "./pages/ResetPasswordPage";
 import DashboardPage  from "./pages/DashboardPage";
 import EmployeesPage  from "./pages/EmployeesPage";
 import AttendancePage from "./pages/AttendancePage";
@@ -57,23 +60,110 @@ function AppShell() {
   );
 
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [resetEmail, setResetEmail] = useState("");
+  const toast = useToast();
+
+  const isEmployee = user?.role === "employee";
+  const defaultRoute = isEmployee ? "/emp-dashboard" : "/dashboard";
 
   /*
    * Get current page from browser URL.
    * Example: /dashboard -> dashboard
    */
-  const page = location.pathname.split("/")[1] || (user?.role === "employee" ? "emp-dashboard" : "dashboard");
+  const page = location.pathname.split("/")[1] || (isEmployee ? "emp-dashboard" : "dashboard");
 
-  /*
-   * Replaces old useState-based setPage().
-   * Example: setPage("employees") -> navigates to /employees
-   */
+  /* ROUTE GUARD: Prevent cross-role direct URL navigation */
+  useEffect(() => {
+    if (!authed || !user) return;
+
+    const currentPath = location.pathname;
+    const isEmp = user?.role === "employee";
+
+    const adminRoutes = [
+      "/dashboard",
+      "/employees",
+      "/attendance",
+      "/leave",
+      "/payroll",
+      "/departments",
+      "/recruitment",
+      "/settings",
+      "/subscription",
+    ];
+
+    if (!isEmp && currentPath.startsWith("/emp-")) {
+      toast?.("Access restricted: Admins cannot access the employee portal directly.", "error");
+      navigate("/dashboard", { replace: true });
+    } else if (isEmp && adminRoutes.some((r) => currentPath.startsWith(r))) {
+      toast?.("Access restricted: Employees cannot access administrative panels.", "error");
+      navigate("/emp-dashboard", { replace: true });
+    }
+  }, [location.pathname, authed, user, navigate, toast]);
+
+  /* AUTH LISTENER: Listen for global logout events */
+  useEffect(() => {
+    const handleLogoutEvent = () => {
+      setUser(null);
+      setAuthed(false);
+      navigate("/login", { replace: true });
+    };
+    window.addEventListener("nexora:logout", handleLogoutEvent);
+    return () => window.removeEventListener("nexora:logout", handleLogoutEvent);
+  }, [navigate]);
+
+  /* SERVER CONNECTION MONITOR: Auto-logout if server closes or restarts */
+  useEffect(() => {
+    if (!authed) return;
+
+    let isMounted = true;
+    const checkServerHealth = async () => {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 2500);
+        const res = await fetch("http://127.0.0.1:8000/api/health/", {
+          signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
+
+        if (!res.ok) {
+          throw new Error("Server unhealthy");
+        }
+
+        const data = await res.json().catch(() => ({}));
+        if (data.server_session) {
+          const storedSession = sessionStorage.getItem("nexora_server_session");
+          if (!storedSession) {
+            sessionStorage.setItem("nexora_server_session", data.server_session);
+          } else if (storedSession !== data.server_session) {
+            if (isMounted) {
+              clearTokens();
+              toast?.("Server was restarted. You have been automatically logged out.", "info");
+            }
+          }
+        }
+      } catch {
+        if (isMounted) {
+          clearTokens();
+          toast?.("Server connection closed. You have been automatically logged out.", "error");
+        }
+      }
+    };
+
+    const interval = setInterval(checkServerHealth, 4000);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, [authed, toast]);
+
+
   const setPage = (newPage) => {
     navigate(`/${newPage}`);
   };
 
   /* LOGIN */
   const handleLogin = (userData) => {
+    sessionStorage.removeItem("nexora_server_session");
     const loggedUser = userData || getCurrentStoredUser();
     setUser(loggedUser);
     setAuthed(true);
@@ -102,6 +192,7 @@ function AppShell() {
             <LoginPage
               onLogin={handleLogin}
               onNavigateSignup={() => navigate("/signup")}
+              onNavigateForgot={() => navigate("/forgot-password")}
             />
           }
         />
@@ -114,6 +205,27 @@ function AppShell() {
             />
           }
         />
+        <Route
+          path="/forgot-password"
+          element={
+            <ForgotPasswordPage
+              onNavigateLogin={() => navigate("/login")}
+              onNavigateReset={(email) => {
+                setResetEmail(email);
+                navigate("/reset-password");
+              }}
+            />
+          }
+        />
+        <Route
+          path="/reset-password"
+          element={
+            <ResetPasswordPage
+              email={resetEmail}
+              onNavigateLogin={() => navigate("/login")}
+            />
+          }
+        />
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     );
@@ -122,8 +234,6 @@ function AppShell() {
   const currentUserName = user
     ? `${user.first_name || ""} ${user.last_name || ""}`.trim() || user.email
     : "Priya Nair";
-
-  const defaultRoute = user?.role === "employee" ? "/emp-dashboard" : "/dashboard";
 
   return (
     <div style={{ display: "flex", background: C.canvas, minHeight: "100vh" }}>
@@ -150,62 +260,33 @@ function AppShell() {
         {/* PAGE CONTENT */}
         <div style={{ padding: 26, flex: 1 }}>
           <Routes>
+            {isEmployee ? (
+              <>
+                {/* EMPLOYEE ROUTES */}
+                <Route path="/emp-dashboard" element={<EmpDashboardPage setPage={setPage} user={user} />} />
+                <Route path="/emp-attendance" element={<EmpAttendancePage user={user} />} />
+                <Route path="/emp-leave" element={<EmpLeavePage user={user} />} />
+                <Route path="/emp-payslips" element={<EmpPayslipsPage user={user} />} />
 
-            {/* DASHBOARD */}
-            <Route
-              path="/dashboard" element={<DashboardPage setPage={setPage} />}
-            />
+                <Route path="*" element={<Navigate to="/emp-dashboard" replace />} />
+              </>
+            ) : (
+              <>
+                {/* ADMIN ROUTES */}
+                <Route path="/dashboard" element={<DashboardPage setPage={setPage} />} />
+                <Route path="/employees" element={<EmployeesPage />} />
+                <Route path="/attendance" element={<AttendancePage />} />
+                <Route path="/leave" element={<LeavePage />} />
+                <Route path="/payroll" element={<PayrollPage />} />
+                <Route path="/departments" element={<DepartmentsPage />} />
+                <Route path="/recruitment" element={<RecruitmentPage />} />
+                <Route path="/settings" element={<SettingsPage user={user} onUpdateUser={setUser} />} />
+                <Route path="/subscription" element={<SubscriptionPage />} />
 
-            {/* EMPLOYEES */}
-            <Route
-              path="/employees" element={<EmployeesPage />}
-            />
-
-            {/* ATTENDANCE */}
-            <Route
-              path="/attendance" element={<AttendancePage />}
-            />
-
-            {/* LEAVE */}
-            <Route
-              path="/leave" element={<LeavePage />}
-            />
-
-            {/* PAYROLL */}
-            <Route
-              path="/payroll" element={<PayrollPage />}
-            />
-
-            {/* DEPARTMENTS */}
-            <Route
-              path="/departments"
-              element={<DepartmentsPage />}
-            />
-
-            {/* RECRUITMENT */}
-            <Route
-              path="/recruitment"
-              element={<RecruitmentPage />}
-            />
-
-            {/* SETTINGS */}
-            <Route
-              path="/settings"
-              element={<SettingsPage />}
-            />
-
-            {/* SUBSCRIPTION */}
-            <Route path="/subscription" element={<SubscriptionPage />} />
-
-            {/* EMPLOYEE PORTAL ROUTES */}
-            <Route path="/emp-dashboard" element={<EmpDashboardPage setPage={setPage} user={user} />} />
-            <Route path="/emp-attendance" element={<EmpAttendancePage user={user} />} />
-            <Route path="/emp-leave" element={<EmpLeavePage user={user} />} />
-            <Route path="/emp-payslips" element={<EmpPayslipsPage user={user} />} />
-
-            {/* UNKNOWN URL -> redirect to default dashboard */}
-            <Route path="*" element={<Navigate to={defaultRoute} replace />} />
-
+                {/* Catch-all for Admin -> redirect to admin dashboard */}
+                <Route path="*" element={<Navigate to="/dashboard" replace />} />
+              </>
+            )}
           </Routes>
         </div>
       </div>

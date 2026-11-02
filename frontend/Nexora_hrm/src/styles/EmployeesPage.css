@@ -1,0 +1,213 @@
+/* EmployeesPage.css */
+.employees-loading {
+  padding: 40px;
+  text-align: center;
+  color: var(--color-slate, #5c6b7a);
+  font-family: var(--font-body, "Inter", sans-serif);
+}
+
+.employees-header-actions {
+  display: flex;
+  gap: 10px;
+}
+
+/* Employee Form */
+.employees-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.employees-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+/* Profile Modal */
+.employees-profile-header {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  margin-bottom: 20px;
+  padding: 0 0 18px;
+  border-bottom: 1px solid var(--color-border, #e2e7ef);
+}
+
+.employees-profile-name {
+  font-family: var(--font-display, "Sora", sans-serif);
+  font-weight: 700;
+  font-size: 19px;
+  color: var(--color-ink, #14213d);
+}
+
+.employees-profile-sub {
+  color: var(--color-slate, #5c6b7a);
+  font-size: 13.5px;
+  margin-top: 2px;
+}
+
+.employees-profile-pill-wrap {
+  margin-top: 8px;
+}
+
+.employees-profile-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  font-family: var(--font-body, "Inter", sans-serif);
+  font-size: 13.5px;
+}
+
+.employees-profile-field-label {
+  color: var(--color-slate-light, #8a97a6);
+  font-size: 11.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  margin-bottom: 3px;
+}
+
+.employees-profile-field-val {
+  color: var(--color-ink, #14213d);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.employees-profile-field-val.mono {
+  font-family: var(--font-mono, monospace);
+}
+
+/* Status Filter Pills */
+.employees-status-pills {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.employees-status-pill-item {
+  cursor: pointer;
+}
+
+/* Search Card */
+.employees-search-card {
+  padding: 14px;
+  margin-bottom: 16px;
+}
+
+.employees-search-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.employees-search-input-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--color-canvas, #f4f6f9);
+  border-radius: 7px;
+  padding: 8px 12px;
+  flex: 1;
+  min-width: 220px;
+}
+
+.employees-search-input {
+  border: none;
+  background: transparent;
+  outline: none;
+  font-family: var(--font-body, "Inter", sans-serif);
+  font-size: 13px;
+  width: 100%;
+  color: var(--color-ink, #14213d);
+}
+
+.employees-filter-box {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.employees-filter-select {
+  padding: 8px 12px;
+  border-radius: 7px;
+  border: 1px solid var(--color-border, #e2e7ef);
+  font-family: var(--font-body, "Inter", sans-serif);
+  font-size: 13px;
+  color: var(--color-ink, #14213d);
+  background: #ffffff;
+}
+
+/* Table */
+.employees-table-card {
+  padding: 0;
+}
+
+.employees-table-row {
+  border-bottom: 1px solid var(--color-border, #e2e7ef);
+  cursor: pointer;
+}
+
+.employees-table-cell {
+  padding: 12px 14px;
+}
+
+.employees-name-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.employees-name-text {
+  font-weight: 600;
+  color: var(--color-ink, #14213d);
+  font-size: 13.5px;
+}
+
+.employees-id-text {
+  font-size: 11.5px;
+  color: var(--color-slate-light, #8a97a6);
+  font-family: var(--font-mono, monospace);
+}
+
+.employees-muted-text {
+  color: var(--color-slate, #5c6b7a);
+  font-size: 13px;
+}
+
+.employees-subtle-text {
+  color: var(--color-slate-light, #8a97a6);
+  font-size: 12px;
+}
+
+.employees-actions-cell {
+  display: flex;
+  gap: 12px;
+}
+
+.employees-action-icon {
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.employees-action-icon:hover {
+  opacity: 0.7;
+}
+
+/* Delete Confirm */
+.employees-delete-desc {
+  font-family: var(--font-body, "Inter", sans-serif);
+  font-size: 13.5px;
+  color: var(--color-slate, #5c6b7a);
+  margin-bottom: 20px;
+}
+
+.employees-delete-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+

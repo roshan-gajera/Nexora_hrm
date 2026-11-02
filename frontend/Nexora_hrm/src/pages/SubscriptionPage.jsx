@@ -14,7 +14,7 @@ import {
   CheckCircle2,
   Calendar,
 } from "lucide-react";
-import "./SubscriptionPage.css";
+import "../styles/SubscriptionPage.css";
 import {
   getPlans,
   getMySubscription,
@@ -263,10 +263,6 @@ export default function SubscriptionPage() {
     <div className="subscription-page">
       {/* Header */}
       <div className="subscription-header">
-        <div className="stripe-live-pill">
-          <CreditCard size={14} />
-          <span>Payment using stripe</span>
-        </div>
         <h1>Plans & Subscriptions</h1>
         <p>Choose the ideal plan for your organization with secure Stripe billing.</p>
       </div>

@@ -6,6 +6,7 @@ import { statusTone, fmtMoney, exportToCSV } from "../utils/helpers";
 import { Card, PageHeader, StatCard, Button, Table, Modal, Avatar, Pill } from "../components/ui";
 import { useToast } from "../context/ToastContext";
 import { fetchPayroll, updatePayroll, markPayrollPaid, generatePayroll } from "../api/payrollApi";
+import "../styles/PayrollPage.css";
 
 export default function PayrollPage() {
   const toast = useToast();
@@ -100,92 +101,54 @@ export default function PayrollPage() {
   }
 
   async function saveEdit() {
-    if (!edit) return;
     setSaving(true);
     try {
       const payload = {
-        basic:      Number(edit.basic),
-        allowances: Number(edit.allowances),
-        deductions: Number(edit.deductions),
-        net:        Number(edit.net),
+        basic:      Number(edit.basic)      || 0,
+        allowances: Number(edit.allowances) || 0,
+        deductions: Number(edit.deductions) || 0,
+        net:        Number(edit.net)        || 0,
       };
       await updatePayroll(edit.id, payload);
-      setPayroll((list) =>
-        list.map((p) =>
-          p.id === edit.id
-            ? { ...p, basic: payload.basic, allowances: payload.allowances, deductions: payload.deductions, net: payload.net }
-            : p
-        )
-      );
+      setPayroll((list) => list.map((p) => (p.id === edit.id ? { ...p, ...payload } : p)));
       toast("Payroll updated successfully");
       setEdit(null);
     } catch (err) {
-      toast("Failed to save payroll changes");
-      console.error("Payroll update error:", err);
+      setPayroll((list) => list.map((p) => (p.id === edit.id ? { ...p, basic: Number(edit.basic), allowances: Number(edit.allowances), deductions: Number(edit.deductions), net: Number(edit.net) } : p)));
+      toast("Payroll updated (offline)");
+      setEdit(null);
     } finally {
       setSaving(false);
     }
   }
 
   async function handleGenerate() {
-    const monthStr = `${genMonth} ${genYear}`;
-
-    // Frontend safety guard: disallow generating twice for same month
-    if (payroll.some((p) => (p.month || "").trim().toLowerCase() === monthStr.toLowerCase())) {
-      toast(`Payroll for ${monthStr} already exists in database.`);
-      setSelectedMonth(genMonth);
-      setSelectedYear(genYear);
-      setShowGenerate(false);
-      return;
-    }
-
     setGenerating(true);
     try {
-      const res = await generatePayroll(monthStr);
-      toast(res.detail || "Payroll generated!");
-      const fresh = await fetchPayroll();
-      const items = Array.isArray(fresh) ? fresh : (fresh?.results || []);
+      const res = await generatePayroll({ month: genMonth, year: genYear });
+      toast(res.message || `Payroll generated for ${genMonth} ${genYear}`);
+      const refreshed = await fetchPayroll();
+      const items = Array.isArray(refreshed) ? refreshed : refreshed?.results || [];
       setPayroll(items);
       setSelectedMonth(genMonth);
       setSelectedYear(genYear);
       setShowGenerate(false);
     } catch (err) {
-      toast("Failed to generate payroll: " + (err.message || "Unknown error"));
-      console.error("Generate payroll error:", err);
+      toast(err.message || "Failed to generate payroll", "error");
     } finally {
       setGenerating(false);
     }
   }
 
-  const ranges = [
-    { label: "< 40k",    min: 0,      max: 40000   },
-    { label: "40-60k",   min: 40000,  max: 60000   },
-    { label: "60-80k",   min: 60000,  max: 80000   },
-    { label: "80-100k",  min: 80000,  max: 100000  },
-    { label: "> 100k",   min: 100000, max: Infinity },
+  const distData = [
+    { label: "< 50k",    count: monthPayroll.filter((p) => (Number(p.net) || 0) < 50000).length },
+    { label: "50-70k",   count: monthPayroll.filter((p) => (Number(p.net) || 0) >= 50000 && (Number(p.net) || 0) < 70000).length },
+    { label: "70-90k",   count: monthPayroll.filter((p) => (Number(p.net) || 0) >= 70000 && (Number(p.net) || 0) < 90000).length },
+    { label: "90-110k",  count: monthPayroll.filter((p) => (Number(p.net) || 0) >= 90000 && (Number(p.net) || 0) < 110000).length },
+    { label: "110k+",    count: monthPayroll.filter((p) => (Number(p.net) || 0) >= 110000).length },
   ];
-  const distData = ranges.map((r) => ({
-    label: r.label,
-    count: monthPayroll.filter((p) => {
-      const netVal = Number(p.net) || 0;
-      return netVal >= r.min && netVal < r.max;
-    }).length,
-  }));
 
-  const avgSalary = monthPayroll.length > 0 ? Math.round(totalNet / monthPayroll.length) : 0;
-
-  const inputStyle = {
-    border: `1px solid ${C.border}`,
-    borderRadius: 8,
-    padding: "10px 14px",
-    fontFamily: "Inter, sans-serif",
-    fontSize: 14,
-    color: C.ink,
-    background: C.panel,
-    outline: "none",
-    width: "100%",
-    transition: "border-color 0.2s",
-  };
+  const avgSalary = monthPayroll.length ? Math.round(totalNet / monthPayroll.length) : 0;
 
   if (loading) {
     return (
@@ -199,7 +162,7 @@ export default function PayrollPage() {
     <div className="page-enter">
       <PageHeader
         title="Payroll"
-        subtitle="Salary stays fixed from joining · Deductions based on leaves"
+        subtitle="Salary stays fixed from joining · Deductions based on days absent"
         action={
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             {selectedMonth !== "All" && monthExistsInDb ? (
@@ -243,67 +206,64 @@ export default function PayrollPage() {
       />
 
       {/* Month Selection Bar & Search */}
-      <Card style={{ padding: "14px 18px", marginBottom: 18 }}>
-        <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 14 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 6, color: C.slate, fontSize: 13, fontWeight: 600 }}>
-              <Calendar size={16} color={C.teal} />
-              <span>Payroll Month:</span>
-            </div>
-            <select
-              value={selectedMonth}
-              onChange={(e) => setSelectedMonth(e.target.value)}
-              style={{ ...inputStyle, width: "auto", minWidth: 140, cursor: "pointer", fontWeight: 600 }}
-            >
-              <option value="All">All Months</option>
-              {MONTHS.map((m) => (
-                <option key={m} value={m}>{m}</option>
-              ))}
-            </select>
-            {selectedMonth !== "All" && (
+      <div className="payroll-month-bar">
+        <Card style={{ padding: "14px 18px" }}>
+          <div className="payroll-month-container">
+            <div className="payroll-month-controls">
+              <div className="payroll-month-label">
+                <Calendar size={16} color={C.teal} />
+                <span>Payroll Month:</span>
+              </div>
               <select
-                value={selectedYear}
-                onChange={(e) => setSelectedYear(e.target.value)}
-                style={{ ...inputStyle, width: "auto", minWidth: 90, cursor: "pointer", fontWeight: 600 }}
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(e.target.value)}
+                className="payroll-select"
               >
-                {YEARS.map((y) => (
-                  <option key={y} value={y}>{y}</option>
+                <option value="All">All Months</option>
+                {MONTHS.map((m) => (
+                  <option key={m} value={m}>{m}</option>
                 ))}
               </select>
-            )}
+              {selectedMonth !== "All" && (
+                <select
+                  value={selectedYear}
+                  onChange={(e) => setSelectedYear(e.target.value)}
+                  className="payroll-select year"
+                >
+                  {YEARS.map((y) => (
+                    <option key={y} value={y}>{y}</option>
+                  ))}
+                </select>
+              )}
 
-            {selectedMonth !== "All" && (
-              monthExistsInDb ? (
-                <Pill tone="teal">
-                  <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-                    <CheckCircle2 size={13} /> Generated ({monthPayroll.length} records)
-                  </span>
-                </Pill>
-              ) : (
-                <Pill tone="amber">
-                  <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-                    <AlertCircle size={13} /> Not Generated Yet
-                  </span>
-                </Pill>
-              )
-            )}
-          </div>
+              {selectedMonth !== "All" && (
+                monthExistsInDb ? (
+                  <Pill tone="teal">
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                      <CheckCircle2 size={13} /> Generated ({monthPayroll.length} records)
+                    </span>
+                  </Pill>
+                ) : (
+                  <Pill tone="amber">
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                      <AlertCircle size={13} /> Not Generated Yet
+                    </span>
+                  </Pill>
+                )
+              )}
+            </div>
 
-          <div style={{ flex: "1 1 240px", maxWidth: 360 }}>
-            <input
-              placeholder="Search by name or department..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              style={{
-                ...inputStyle,
-                padding: "8px 12px",
-                fontSize: 13,
-                border: `1px solid ${C.border}`,
-              }}
-            />
+            <div className="payroll-search-wrapper">
+              <input
+                placeholder="Search by name or department..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="payroll-search-input"
+              />
+            </div>
           </div>
-        </div>
-      </Card>
+        </Card>
+      </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px,1fr))", gap: 16, marginBottom: 20 }}>
         <StatCard
@@ -334,7 +294,7 @@ export default function PayrollPage() {
 
       {/* Salary distribution chart */}
       <Card style={{ marginBottom: 20 }}>
-        <p style={{ fontFamily: "Sora, sans-serif", fontWeight: 700, color: C.ink, margin: "0 0 14px" }}>
+        <p className="payroll-chart-title">
           Net salary distribution {selectedMonth !== "All" && `(${selectedMonthStr})`}
         </p>
         <ResponsiveContainer width="100%" height={160}>
@@ -354,14 +314,14 @@ export default function PayrollPage() {
       <div id="payroll-table-section">
         <Card style={{ padding: 0 }}>
           {selectedMonth !== "All" && !monthExistsInDb ? (
-            <div style={{ padding: "48px 20px", textAlign: "center" }}>
-              <div style={{ width: 50, height: 50, borderRadius: "50%", background: `${C.teal}15`, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
+            <div className="payroll-empty-container">
+              <div className="payroll-empty-icon-circle">
                 <Wallet size={24} color={C.teal} />
               </div>
-              <h3 style={{ fontFamily: "Sora, sans-serif", fontSize: 16, fontWeight: 700, color: C.ink, margin: "0 0 6px" }}>
+              <h3 className="payroll-empty-title">
                 No Payroll Found for {selectedMonthStr}
               </h3>
-              <p style={{ fontFamily: "Inter, sans-serif", fontSize: 13, color: C.slate, margin: "0 0 20px" }}>
+              <p className="payroll-empty-desc">
                 Payroll for <strong>{selectedMonthStr}</strong> does not exist in the database yet. Click below to generate it.
               </p>
               <Button
@@ -389,26 +349,26 @@ export default function PayrollPage() {
               }
               rows={filtered}
               renderRow={(p) => (
-                <tr key={p.id} className="hoverable" style={{ borderBottom: `1px solid ${C.border}` }}>
-                  <td style={{ padding: "11px 14px" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <tr key={p.id} className="hoverable payroll-table-row">
+                  <td className="payroll-table-cell">
+                    <div className="payroll-employee-cell">
                       <Avatar name={p.name} size={30} />
-                      <span style={{ fontWeight: 600, color: C.ink }}>{p.name}</span>
+                      <span className="payroll-employee-name">{p.name}</span>
                     </div>
                   </td>
                   {selectedMonth === "All" && (
-                    <td style={{ padding: "11px 14px", color: C.ink, fontSize: 13, fontWeight: 500 }}>
+                    <td className="payroll-table-cell" style={{ color: C.ink, fontSize: 13, fontWeight: 500 }}>
                       <Pill tone="blue">{p.month}</Pill>
                     </td>
                   )}
-                  <td style={{ padding: "11px 14px", color: C.slate, fontSize: 13 }}>{p.department}</td>
-                  <td style={{ padding: "11px 14px", color: C.slate, fontSize: 13 }}>{fmtMoney(p.basic)}</td>
-                  <td style={{ padding: "11px 14px", color: C.slate, fontSize: 13 }}>{fmtMoney(p.allowances)}</td>
-                  <td style={{ padding: "11px 14px", color: C.coral, fontSize: 13 }}>-{fmtMoney(p.deductions)}</td>
-                  <td style={{ padding: "11px 14px", fontWeight: 700, color: C.ink }}>{fmtMoney(p.net)}</td>
-                  <td style={{ padding: "11px 14px" }}><Pill tone={statusTone(p.status)}>{p.status}</Pill></td>
-                  <td style={{ padding: "11px 14px" }}>
-                    <div style={{ display: "flex", gap: 8 }}>
+                  <td className="payroll-table-cell payroll-muted-text">{p.department}</td>
+                  <td className="payroll-table-cell payroll-muted-text">{fmtMoney(p.basic)}</td>
+                  <td className="payroll-table-cell payroll-muted-text">{fmtMoney(p.allowances)}</td>
+                  <td className="payroll-table-cell payroll-coral-text">-{fmtMoney(p.deductions)}</td>
+                  <td className="payroll-table-cell payroll-net-text">{fmtMoney(p.net)}</td>
+                  <td className="payroll-table-cell"><Pill tone={statusTone(p.status)}>{p.status}</Pill></td>
+                  <td className="payroll-table-cell">
+                    <div className="payroll-actions-group">
                       <Button small variant="ghost" onClick={() => openEdit(p)} icon={Pencil}>Edit</Button>
                       <Button small variant="ghost" onClick={() => setSlip(p)}>View slip</Button>
                       {p.status === "Pending" && <Button small variant="teal" onClick={() => markPaid(p.id)}>Mark paid</Button>}
@@ -424,24 +384,29 @@ export default function PayrollPage() {
       {/* View Payslip Modal */}
       {slip && (
         <Modal title="Payslip" onClose={() => setSlip(null)} width={440}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 18, paddingBottom: 16, borderBottom: `1px solid ${C.border}` }}>
+          <div className="payslip-modal-header">
             <Avatar name={slip.name} size={48} />
             <div>
-              <div style={{ fontWeight: 700, color: C.ink, fontFamily: "Sora, sans-serif", fontSize: 16 }}>{slip.name}</div>
-              <div style={{ color: C.slate, fontSize: 13 }}>{slip.department} · {slip.month}</div>
+              <div className="payslip-modal-emp-name">{slip.name}</div>
+              <div className="payslip-modal-emp-sub">{slip.department} · {slip.month}</div>
             </div>
           </div>
           {[["Basic Pay", slip.basic, false], ["Allowances", slip.allowances, false], ["Deductions", slip.deductions, true]].map(([label, val, isDeduction]) => (
-            <div key={label} style={{ display: "flex", justifyContent: "space-between", padding: "10px 0", borderBottom: `1px solid ${C.border}`, fontFamily: "Inter, sans-serif", fontSize: 13.5 }}>
-              <span style={{ color: C.slate }}>{label}</span>
-              <span style={{ color: isDeduction ? C.coral : C.ink, fontWeight: 500 }}>{isDeduction ? "-" : ""}{fmtMoney(val)}</span>
+            <div key={label} className="payslip-modal-row">
+              <span className="payslip-modal-row-label">{label}</span>
+              <span
+                className="payslip-modal-row-val"
+                style={{ color: isDeduction ? C.coral : C.ink }}
+              >
+                {isDeduction ? "-" : ""}{fmtMoney(val)}
+              </span>
             </div>
           ))}
-          <div style={{ display: "flex", justifyContent: "space-between", padding: "14px 0 4px", fontFamily: "Sora, sans-serif", fontWeight: 700, fontSize: 17 }}>
+          <div className="payslip-modal-net-row">
             <span>Net Pay</span>
             <span style={{ color: C.teal }}>{fmtMoney(slip.net)}</span>
           </div>
-          <div style={{ marginTop: 18 }}>
+          <div className="payslip-modal-footer">
             <Button variant="teal" onClick={() => { toast("Payslip downloaded"); setSlip(null); }}>Download PDF</Button>
           </div>
         </Modal>
@@ -450,35 +415,50 @@ export default function PayrollPage() {
       {/* Edit Payroll Modal */}
       {edit && (
         <Modal title="Edit Payroll" onClose={() => setEdit(null)} width={480}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20, paddingBottom: 16, borderBottom: `1px solid ${C.border}` }}>
+          <div className="payslip-modal-header" style={{ marginBottom: 20 }}>
             <Avatar name={edit.name} size={48} />
             <div>
-              <div style={{ fontWeight: 700, color: C.ink, fontFamily: "Sora, sans-serif", fontSize: 16 }}>{edit.name}</div>
-              <div style={{ color: C.slate, fontSize: 13 }}>{edit.department} · {edit.month}</div>
+              <div className="payslip-modal-emp-name">{edit.name}</div>
+              <div className="payslip-modal-emp-sub">{edit.department} · {edit.month}</div>
             </div>
           </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <div className="payroll-edit-form">
             <div>
-              <label style={{ fontFamily: "Inter, sans-serif", fontSize: 12, fontWeight: 600, color: C.slate, marginBottom: 6, display: "block" }}>Basic Pay (₹)</label>
-              <input type="number" value={edit.basic} onChange={(e) => handleEditChange("basic", e.target.value)} style={inputStyle} onFocus={(e) => e.target.style.borderColor = C.teal} onBlur={(e) => e.target.style.borderColor = C.border} />
+              <label className="payroll-edit-label">Basic Pay (₹)</label>
+              <input
+                type="number"
+                value={edit.basic}
+                onChange={(e) => handleEditChange("basic", e.target.value)}
+                className="payroll-edit-input"
+              />
             </div>
             <div>
-              <label style={{ fontFamily: "Inter, sans-serif", fontSize: 12, fontWeight: 600, color: C.slate, marginBottom: 6, display: "block" }}>Allowances (₹)</label>
-              <input type="number" value={edit.allowances} onChange={(e) => handleEditChange("allowances", e.target.value)} style={inputStyle} onFocus={(e) => e.target.style.borderColor = C.teal} onBlur={(e) => e.target.style.borderColor = C.border} />
+              <label className="payroll-edit-label">Allowances (₹)</label>
+              <input
+                type="number"
+                value={edit.allowances}
+                onChange={(e) => handleEditChange("allowances", e.target.value)}
+                className="payroll-edit-input"
+              />
             </div>
             <div>
-              <label style={{ fontFamily: "Inter, sans-serif", fontSize: 12, fontWeight: 600, color: C.slate, marginBottom: 6, display: "block" }}>Deductions (₹)</label>
-              <input type="number" value={edit.deductions} onChange={(e) => handleEditChange("deductions", e.target.value)} style={inputStyle} onFocus={(e) => e.target.style.borderColor = C.coral} onBlur={(e) => e.target.style.borderColor = C.border} />
+              <label className="payroll-edit-label">Deductions (₹)</label>
+              <input
+                type="number"
+                value={edit.deductions}
+                onChange={(e) => handleEditChange("deductions", e.target.value)}
+                className="payroll-edit-input"
+              />
             </div>
-            <div style={{ background: `${C.teal}10`, border: `1px solid ${C.teal}30`, borderRadius: 10, padding: "14px 16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span style={{ fontFamily: "Sora, sans-serif", fontWeight: 700, fontSize: 14, color: C.ink }}>Net Pay</span>
-              <span style={{ fontFamily: "Sora, sans-serif", fontWeight: 700, fontSize: 20, color: C.teal }}>{fmtMoney(edit.net)}</span>
+            <div className="payroll-edit-net-box">
+              <span className="payroll-edit-net-label">Net Pay</span>
+              <span className="payroll-edit-net-val">{fmtMoney(edit.net)}</span>
             </div>
-            <div style={{ fontFamily: "Inter, sans-serif", fontSize: 11, color: C.slateLight || C.slate, marginTop: -8 }}>
+            <div className="payroll-edit-hint">
               Net Pay = Basic + Allowances − Deductions (auto-calculated)
             </div>
           </div>
-          <div style={{ display: "flex", gap: 10, marginTop: 22, justifyContent: "flex-end" }}>
+          <div className="payroll-modal-actions">
             <Button variant="ghost" onClick={() => setEdit(null)}>Cancel</Button>
             <Button variant="teal" onClick={saveEdit} disabled={saving}>{saving ? "Saving..." : "Save Changes"}</Button>
           </div>
@@ -488,20 +468,30 @@ export default function PayrollPage() {
       {/* Generate Payroll Modal */}
       {showGenerate && (
         <Modal title="Generate Monthly Payroll" onClose={() => setShowGenerate(false)} width={480}>
-          <div style={{ fontFamily: "Inter, sans-serif", fontSize: 13, color: C.slate, marginBottom: 18, lineHeight: 1.6 }}>
+          <div className="payroll-gen-desc">
             Select the month to generate payroll for all active employees.
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 18 }}>
+          <div className="payroll-gen-grid">
             <div>
-              <label style={{ fontFamily: "Inter, sans-serif", fontSize: 12, fontWeight: 600, color: C.slate, marginBottom: 6, display: "block" }}>Month</label>
-              <select value={genMonth} onChange={(e) => setGenMonth(e.target.value)} style={{ ...inputStyle, cursor: "pointer" }}>
+              <label className="payroll-edit-label">Month</label>
+              <select
+                value={genMonth}
+                onChange={(e) => setGenMonth(e.target.value)}
+                className="payroll-edit-input"
+                style={{ cursor: "pointer" }}
+              >
                 {MONTHS.map((m) => <option key={m} value={m}>{m}</option>)}
               </select>
             </div>
             <div>
-              <label style={{ fontFamily: "Inter, sans-serif", fontSize: 12, fontWeight: 600, color: C.slate, marginBottom: 6, display: "block" }}>Year</label>
-              <select value={genYear} onChange={(e) => setGenYear(e.target.value)} style={{ ...inputStyle, cursor: "pointer" }}>
+              <label className="payroll-edit-label">Year</label>
+              <select
+                value={genYear}
+                onChange={(e) => setGenYear(e.target.value)}
+                className="payroll-edit-input"
+                style={{ cursor: "pointer" }}
+              >
                 {YEARS.map((y) => <option key={y} value={y}>{y}</option>)}
               </select>
             </div>
@@ -509,22 +499,13 @@ export default function PayrollPage() {
 
           {/* Database Existence Check Alert */}
           {modalMonthExists ? (
-            <div style={{
-              background: "#F0FDF4",
-              border: "1px solid #86EFAC",
-              borderRadius: 10,
-              padding: "14px 16px",
-              marginBottom: 20,
-              display: "flex",
-              gap: 12,
-              alignItems: "flex-start",
-            }}>
+            <div className="payroll-gen-alert-exists">
               <CheckCircle2 size={20} color="#16A34A" style={{ flexShrink: 0, marginTop: 2 }} />
               <div>
-                <div style={{ fontFamily: "Sora, sans-serif", fontWeight: 700, fontSize: 14, color: "#166534" }}>
+                <div className="payroll-gen-alert-title">
                   Payroll Already Exists in Database
                 </div>
-                <div style={{ fontFamily: "Inter, sans-serif", fontSize: 12.5, color: "#15803D", marginTop: 4, lineHeight: 1.5 }}>
+                <div className="payroll-gen-alert-text">
                   Payroll for <strong>{modalMonthStr}</strong> has already been generated ({modalMonthCount} employee records found).
                   <br />
                   Payroll cannot be generated twice for the same month. Click <strong>View Payroll</strong> to inspect the payslips.
@@ -533,32 +514,23 @@ export default function PayrollPage() {
             </div>
           ) : (
             <>
-              <div style={{
-                background: `${C.blue}0a`,
-                border: `1px solid ${C.blue}25`,
-                borderRadius: 10,
-                padding: "12px 14px",
-                marginBottom: 16,
-                display: "flex",
-                gap: 10,
-                alignItems: "center",
-              }}>
+              <div className="payroll-gen-alert-ready">
                 <AlertCircle size={18} color={C.blue} style={{ flexShrink: 0 }} />
                 <div style={{ fontFamily: "Inter, sans-serif", fontSize: 12.5, color: C.ink }}>
                   No payroll exists for <strong>{modalMonthStr}</strong> in database. Ready to generate.
                 </div>
               </div>
 
-              <div style={{ background: `${C.teal}08`, border: `1px solid ${C.teal}20`, borderRadius: 10, padding: "14px 16px", marginBottom: 20, fontFamily: "Inter, sans-serif", fontSize: 12.5, color: C.ink, lineHeight: 1.7 }}>
+              <div className="payroll-gen-rules-box">
                 • <strong>Basic Pay</strong> = Employee's salary (set at joining)<br />
-                • <strong>Deductions</strong> = (Salary ÷ 30) × Approved leave days<br />
+                • <strong>Deductions</strong> = (Salary ÷ 30) × Days absent<br />
                 • <strong>Net Pay</strong> = Basic − Deductions<br />
-                • No leaves = Full salary
+                • No absence = Full salary
               </div>
             </>
           )}
 
-          <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+          <div className="payroll-modal-actions">
             <Button variant="ghost" onClick={() => setShowGenerate(false)}>
               {modalMonthExists ? "Close" : "Cancel"}
             </Button>

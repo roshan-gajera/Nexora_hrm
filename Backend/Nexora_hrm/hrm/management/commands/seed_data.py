@@ -115,8 +115,8 @@ class Command(BaseCommand):
 
         # ── Leave Types & Balances ─────────────────────────────────────────────
         leave_types_data = [
-            ("Casual Leave",  12, True,  False),
-            ("Sick Leave",    10, True,  False),
+            ("Casual Leave",  8, True,  False),
+            ("Sick Leave",    8, True,  False),
             ("Earned Leave",  15, True,  True),
             ("Unpaid Leave",  5,  False, False),
         ]

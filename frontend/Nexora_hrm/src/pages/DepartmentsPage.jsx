@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import {
   Building2, Users, Search, Mail, Phone, MapPin,
-  Calendar, ArrowRight, UserCheck, CheckCircle2, ChevronRight, X
+  ArrowRight, X
 } from "lucide-react";
 import { C } from "../constants/theme";
 import { statusTone, fmtMoney } from "../utils/helpers";
-import { Card, PageHeader, Avatar, Pill, Table, EmptyState, Modal, Button } from "../components/ui";
+import { Card, PageHeader, Avatar, Pill, Table, EmptyState, Modal } from "../components/ui";
 import { fetchDepartments } from "../api/departmentsApi";
 import { fetchEmployees } from "../api/employeesApi";
+import "../styles/DepartmentsPage.css";
 
 function EmployeeProfileModal({ employee, onClose }) {
   if (!employee) return null;
@@ -24,13 +25,13 @@ function EmployeeProfileModal({ employee, onClose }) {
 
   return (
     <Modal title="Employee Profile" onClose={onClose} width={520}>
-      <div style={{ display: "flex", gap: 16, alignItems: "center", marginBottom: 20, padding: "0 0 18px", borderBottom: `1px solid ${C.border}` }}>
+      <div className="departments-profile-header">
         <Avatar name={employee.name} size={64} />
         <div>
-          <div style={{ fontFamily: "Sora, sans-serif", fontWeight: 700, fontSize: 19, color: C.ink }}>
+          <div className="departments-profile-name">
             {employee.name}
           </div>
-          <div style={{ color: C.slate, fontSize: 13.5, marginTop: 2 }}>
+          <div className="departments-profile-sub">
             {employee.role} · {employee.department || "General"}
           </div>
           <div style={{ marginTop: 8 }}>
@@ -39,13 +40,13 @@ function EmployeeProfileModal({ employee, onClose }) {
         </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, fontFamily: "Inter, sans-serif", fontSize: 13.5 }}>
+      <div className="departments-profile-grid">
         {fields.map((f) => (
           <div key={f.label}>
-            <span style={{ display: "block", color: C.slateLight, fontSize: 11.5, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.4 }}>
+            <span className="departments-profile-field-label">
               {f.label}
             </span>
-            <span style={{ color: C.ink, fontWeight: 500, fontFamily: f.mono ? "IBM Plex Mono, monospace" : "inherit", display: "flex", alignItems: "center", gap: 5, marginTop: 3 }}>
+            <span className={`departments-profile-field-val ${f.mono ? "mono" : ""}`}>
               {f.icon} {f.value}
             </span>
           </div>
@@ -100,47 +101,51 @@ export default function DepartmentsPage() {
   // Check matching employees for a department
   const getDeptEmployees = (dept) => {
     if (!dept) return [];
-    return employees.filter((e) =>
-      e.department === dept.name ||
-      e.department_name === dept.name ||
-      e.department === dept.id ||
-      e.department_id === dept.id
-    );
+    return employees.filter((e) => {
+      if (e.department_id && dept.id && e.department_id === dept.id) return true;
+      if (e.department && dept.name) {
+        return e.department.toLowerCase().trim() === dept.name.toLowerCase().trim();
+      }
+      return false;
+    });
   };
 
-  // Filtered employees for the currently selected department
+  // Filtered employees in the selected department
   const filteredDeptEmployees = useMemo(() => {
     if (!selectedDepartment) return [];
     const baseList = getDeptEmployees(selectedDepartment);
 
     return baseList.filter((e) => {
       // Status filter
-      if (statusFilter !== "All" && e.status !== statusFilter) return false;
-
+      if (statusFilter !== "All" && (e.status || "Active") !== statusFilter) {
+        return false;
+      }
       // Search query
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
-        const nameMatch = (e.name || "").toLowerCase().includes(q);
-        const codeMatch = (e.id || e.employee_code || "").toLowerCase().includes(q);
-        const roleMatch = (e.role || "").toLowerCase().includes(q);
-        const emailMatch = (e.email || "").toLowerCase().includes(q);
-        if (!nameMatch && !codeMatch && !roleMatch && !emailMatch) return false;
+        const matchName = (e.name || "").toLowerCase().includes(q);
+        const matchRole = (e.role || "").toLowerCase().includes(q);
+        const matchEmail = (e.email || "").toLowerCase().includes(q);
+        const matchCode = (e.id || e.employee_code || "").toLowerCase().includes(q);
+        if (!matchName && !matchRole && !matchEmail && !matchCode) return false;
       }
-
       return true;
     });
   }, [selectedDepartment, employees, statusFilter, searchQuery]);
 
-  const handleSelectDept = (dept) => {
-    setSelectedDeptId(dept.id);
+  const handleSelectDepartment = (deptId) => {
+    setSelectedDeptId(deptId);
     setSearchQuery("");
     setStatusFilter("All");
+    if (empSectionRef.current) {
+      empSectionRef.current.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
   };
 
   if (loading) {
     return (
-      <div style={{ padding: 50, textAlign: "center", color: C.slate, fontFamily: "Inter, sans-serif" }}>
-        Loading departments and staff data...
+      <div style={{ padding: 40, textAlign: "center", color: C.slate, fontFamily: "Inter, sans-serif" }}>
+        Loading departments and organization structure...
       </div>
     );
   }
@@ -149,11 +154,11 @@ export default function DepartmentsPage() {
     <div className="page-enter">
       <PageHeader
         title="Departments"
-        subtitle="Organizational structure and headcount by functional unit. Click any department to view its team members."
+        subtitle={`${departments.length} functional teams · ${employees.length} total staff members`}
       />
 
-      {/* ── DEPARTMENT CARDS GRID ── */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 16, marginBottom: 28 }}>
+      {/* ── DEPARTMENT SUMMARY CARDS ── */}
+      <div className="departments-grid">
         {departments.map((d) => {
           const staff = getDeptEmployees(d);
           const isSelected = selectedDepartment?.id === d.id;
@@ -161,97 +166,55 @@ export default function DepartmentsPage() {
           return (
             <div
               key={d.id}
-              onClick={() => handleSelectDept(d)}
+              onClick={() => handleSelectDepartment(d.id)}
+              className={`departments-card ${isSelected ? "selected" : ""}`}
               style={{
-                background: C.panel,
-                borderRadius: 12,
-                padding: 20,
-                cursor: "pointer",
-                border: isSelected ? `2px solid ${d.color || C.teal}` : `1px solid ${C.border}`,
-                borderLeft: `5px solid ${d.color || C.teal}`,
-                boxShadow: isSelected
-                  ? `0 8px 24px ${d.color ? d.color + "22" : "rgba(31,138,112,0.15)"}`
-                  : "0 2px 8px rgba(0,0,0,0.02)",
-                transform: isSelected ? "translateY(-2px)" : "none",
-                transition: "all 0.2s ease",
-                position: "relative",
-              }}
-              onMouseEnter={(e) => {
-                if (!isSelected) {
-                  e.currentTarget.style.transform = "translateY(-3px)";
-                  e.currentTarget.style.boxShadow = "0 8px 20px rgba(20,33,61,0.08)";
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!isSelected) {
-                  e.currentTarget.style.transform = "none";
-                  e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.02)";
-                }
+                borderLeft: isSelected ? `4px solid ${d.color || C.teal}` : undefined,
               }}
             >
-              {/* Card Header */}
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
-                <div>
-                  <div style={{ fontFamily: "Sora, sans-serif", fontWeight: 700, fontSize: 16, color: C.ink }}>
-                    {d.name}
-                  </div>
-                  <div style={{ fontSize: 12.5, color: C.slate, marginTop: 2 }}>
-                    Head: <span style={{ fontWeight: 600, color: C.ink }}>{d.head || "Unassigned"}</span>
+              {/* Header */}
+              <div className="departments-card-top">
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <div
+                    className="departments-card-color-dot"
+                    style={{ background: d.color || C.teal }}
+                  />
+                  <div>
+                    <h3 className="departments-card-title">
+                      {d.name}
+                    </h3>
+                    <p className="departments-card-head">
+                      Head: {d.head || "Not assigned"}
+                    </p>
                   </div>
                 </div>
                 <div
-                  style={{
-                    width: 34,
-                    height: 34,
-                    borderRadius: 8,
-                    background: (d.color || C.teal) + "18",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
+                  className="departments-card-icon-box"
+                  style={{ background: (d.color || C.teal) + "18" }}
                 >
                   <Building2 size={18} color={d.color || C.teal} />
                 </div>
               </div>
 
               {/* Headcount */}
-              <div style={{ fontFamily: "Sora, sans-serif", fontSize: 24, fontWeight: 700, color: C.ink, marginBottom: 12 }}>
-                {staff.length} <span style={{ fontSize: 12.5, fontWeight: 500, color: C.slateLight }}>team member{staff.length === 1 ? "" : "s"}</span>
+              <div className="departments-headcount">
+                {staff.length} <span className="departments-headcount-sub">team member{staff.length === 1 ? "" : "s"}</span>
               </div>
 
               {/* Avatars pile & Click indicator */}
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <div style={{ display: "flex", marginLeft: 4 }}>
+              <div className="departments-card-footer">
+                <div className="departments-avatars-pile">
                   {staff.slice(0, 5).map((s, i) => (
                     <div
                       key={s.id || i}
-                      style={{
-                        marginLeft: i === 0 ? 0 : -10,
-                        border: `2px solid ${C.panel}`,
-                        borderRadius: "50%",
-                      }}
+                      className="departments-avatar-item"
+                      style={{ marginLeft: i === 0 ? 0 : -10 }}
                     >
                       <Avatar name={s.name} size={28} />
                     </div>
                   ))}
                   {staff.length > 5 && (
-                    <div
-                      style={{
-                        marginLeft: -10,
-                        width: 28,
-                        height: 28,
-                        borderRadius: "50%",
-                        background: C.canvas,
-                        border: `2px solid ${C.panel}`,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        fontSize: 10,
-                        fontFamily: "Inter, sans-serif",
-                        fontWeight: 700,
-                        color: C.slate,
-                      }}
-                    >
+                    <div className="departments-avatar-more">
                       +{staff.length - 5}
                     </div>
                   )}
@@ -259,14 +222,8 @@ export default function DepartmentsPage() {
 
                 {/* View indication badge */}
                 <span
-                  style={{
-                    fontSize: 11.5,
-                    fontWeight: 600,
-                    color: isSelected ? (d.color || C.teal) : C.slateLight,
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 4,
-                  }}
+                  className="departments-view-badge"
+                  style={{ color: isSelected ? (d.color || C.teal) : C.slateLight }}
                 >
                   {isSelected ? "Viewing Team" : "Click to view"}
                   <ArrowRight size={13} />
@@ -282,29 +239,16 @@ export default function DepartmentsPage() {
         <Card ref={empSectionRef} style={{ padding: 0 }}>
           {/* Header Banner */}
           <div
+            className="departments-emp-header"
             style={{
-              padding: "20px 24px",
-              borderBottom: `1px solid ${C.border}`,
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              flexWrap: "wrap",
-              gap: 16,
               background: `linear-gradient(90deg, ${(selectedDepartment.color || C.teal) + "0A"} 0%, transparent 100%)`,
-              borderTopLeftRadius: 10,
-              borderTopRightRadius: 10,
             }}
           >
             <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
               <div
+                className="departments-emp-icon-box"
                 style={{
-                  width: 44,
-                  height: 44,
-                  borderRadius: 10,
                   background: (selectedDepartment.color || C.teal) + "20",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
                   border: `1px solid ${(selectedDepartment.color || C.teal) + "40"}`,
                 }}
               >
@@ -313,48 +257,36 @@ export default function DepartmentsPage() {
 
               <div>
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <h2 style={{ fontFamily: "Sora, sans-serif", fontSize: 18, fontWeight: 700, color: C.ink, margin: 0 }}>
+                  <h2 className="departments-emp-title">
                     Employees in {selectedDepartment.name}
                   </h2>
                   <span
+                    className="departments-emp-badge"
                     style={{
                       background: (selectedDepartment.color || C.teal) + "18",
                       color: selectedDepartment.color || C.teal,
-                      fontFamily: "Inter, sans-serif",
-                      fontSize: 12,
-                      fontWeight: 700,
-                      padding: "2px 10px",
-                      borderRadius: 999,
                     }}
                   >
                     {getDeptEmployees(selectedDepartment).length} Members
                   </span>
                 </div>
-                <p style={{ fontFamily: "Inter, sans-serif", fontSize: 13, color: C.slate, margin: "4px 0 0" }}>
+                <p className="departments-emp-head-text">
                   Head of Department: <strong>{selectedDepartment.head || "Unassigned"}</strong>
                 </p>
               </div>
             </div>
 
             {/* Search & Status Filters */}
-            <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+            <div className="departments-emp-filters">
               {/* Search box */}
-              <div style={{ display: "flex", alignItems: "center", gap: 8, background: C.canvas, padding: "7px 12px", borderRadius: 8, width: 220 }}>
+              <div className="departments-search-box">
                 <Search size={14} color={C.slateLight} />
                 <input
                   type="text"
                   placeholder="Search staff, role, email..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  style={{
-                    border: "none",
-                    background: "transparent",
-                    outline: "none",
-                    fontFamily: "Inter, sans-serif",
-                    fontSize: 13,
-                    width: "100%",
-                    color: C.ink,
-                  }}
+                  className="departments-search-input"
                 />
                 {searchQuery && (
                   <X
@@ -366,24 +298,13 @@ export default function DepartmentsPage() {
               </div>
 
               {/* Status filter pills */}
-              <div style={{ display: "flex", gap: 6 }}>
+              <div className="departments-status-pills">
                 {["All", "Active", "On Leave", "Inactive"].map((s) => (
                   <button
                     key={s}
                     type="button"
                     onClick={() => setStatusFilter(s)}
-                    style={{
-                      border: "none",
-                      padding: "5px 12px",
-                      borderRadius: 6,
-                      fontFamily: "Inter, sans-serif",
-                      fontSize: 12,
-                      fontWeight: 600,
-                      cursor: "pointer",
-                      background: statusFilter === s ? C.ink : C.canvas,
-                      color: statusFilter === s ? "#fff" : C.slate,
-                      transition: "all 0.15s ease",
-                    }}
+                    className={`departments-status-pill-btn ${statusFilter === s ? "active" : ""}`}
                   >
                     {s}
                   </button>
@@ -410,57 +331,58 @@ export default function DepartmentsPage() {
               renderRow={(e) => (
                 <tr
                   key={e.id || e.pk}
-                  className="hoverable"
+                  className="hoverable departments-table-row"
                   onClick={() => setViewingProfile(e)}
-                  style={{ borderBottom: `1px solid ${C.border}`, cursor: "pointer" }}
                 >
-                  <td style={{ padding: "12px 16px", display: "flex", alignItems: "center", gap: 10 }}>
-                    <Avatar name={e.name} size={32} />
-                    <div>
-                      <div style={{ fontWeight: 600, color: C.ink }}>{e.name}</div>
-                      {e.manager && (
-                        <div style={{ fontSize: 11, color: C.slateLight }}>
-                          Reports to: {e.manager}
-                        </div>
-                      )}
+                  <td className="departments-table-cell">
+                    <div className="departments-staff-cell">
+                      <Avatar name={e.name} size={32} />
+                      <div>
+                        <div className="departments-staff-name">{e.name}</div>
+                        {e.manager && (
+                          <div className="departments-reports-to">
+                            Reports to: {e.manager}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </td>
-                  <td style={{ padding: "12px 16px", fontFamily: "IBM Plex Mono, monospace", fontSize: 13, color: C.slate }}>
+                  <td className="departments-table-cell departments-cell-code">
                     {e.id || e.employee_code || "—"}
                   </td>
-                  <td style={{ padding: "12px 16px", color: C.ink, fontWeight: 500 }}>
+                  <td className="departments-table-cell departments-cell-role">
                     {e.role}
                   </td>
-                  <td style={{ padding: "12px 16px", color: C.slate }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <td className="departments-table-cell departments-cell-muted">
+                    <div className="departments-cell-icon-text">
                       <Mail size={13} color={C.slateLight} />
-                      <span style={{ fontSize: 13 }}>{e.email}</span>
+                      <span>{e.email}</span>
                     </div>
                   </td>
-                  <td style={{ padding: "12px 16px", color: C.slate }}>
+                  <td className="departments-table-cell departments-cell-muted">
                     {e.phone ? (
-                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      <div className="departments-cell-icon-text">
                         <Phone size={13} color={C.slateLight} />
-                        <span style={{ fontSize: 13 }}>{e.phone}</span>
+                        <span>{e.phone}</span>
                       </div>
                     ) : (
                       "—"
                     )}
                   </td>
-                  <td style={{ padding: "12px 16px", color: C.slate }}>
+                  <td className="departments-table-cell departments-cell-muted">
                     {e.location ? (
-                      <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                      <div className="departments-cell-icon-text">
                         <MapPin size={13} color={C.slateLight} />
-                        <span style={{ fontSize: 13 }}>{e.location}</span>
+                        <span>{e.location}</span>
                       </div>
                     ) : (
                       "—"
                     )}
                   </td>
-                  <td style={{ padding: "12px 16px" }}>
+                  <td className="departments-table-cell">
                     <Pill tone={statusTone(e.status)}>{e.status || "Active"}</Pill>
                   </td>
-                  <td style={{ padding: "12px 16px", color: C.slate, whiteSpace: "nowrap", fontSize: 13 }}>
+                  <td className="departments-table-cell departments-cell-muted" style={{ whiteSpace: "nowrap" }}>
                     {e.joinDate || "—"}
                   </td>
                 </tr>

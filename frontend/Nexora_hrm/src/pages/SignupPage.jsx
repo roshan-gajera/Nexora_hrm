@@ -1,7 +1,7 @@
 import React, { useState } from "react";
-import { C } from "../constants/theme";
 import { Input } from "../components/ui";
 import { registerApi } from "../api/auth";
+import "../styles/SignupPage.css";
 
 export default function SignupPage({ onSignup, onNavigateLogin }) {
   const [firstName, setFirstName] = useState("");
@@ -35,51 +35,84 @@ export default function SignupPage({ onSignup, onNavigateLogin }) {
   }
 
   return (
-    <div style={{ minHeight: "100vh", display: "flex", fontFamily: "Inter, sans-serif", background: C.canvas }}>
+    <div className="signup-container">
       {/* Left panel */}
-      <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
-        <div style={{ width: 380, maxWidth: "100%" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 30 }}>
-            <div style={{ width: 34, height: 34, borderRadius: 8, background: C.ink, display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <span style={{ color: C.teal, fontFamily: "Sora, sans-serif", fontWeight: 800 }}>N</span>
+      <div className="signup-left-panel">
+        <div className="signup-box">
+          <div className="signup-logo-row">
+            <div className="signup-logo-icon">
+              <span className="signup-logo-letter">N</span>
             </div>
-            <span style={{ fontFamily: "Sora, sans-serif", fontWeight: 700, fontSize: 18, color: C.ink }}>Nexora HRM</span>
+            <span className="signup-brand-name">Nexora HRM</span>
           </div>
 
-          <h1 style={{ fontFamily: "Sora, sans-serif", fontSize: 26, fontWeight: 700, color: C.ink, margin: "0 0 6px" }}>Create an account</h1>
-          <p style={{ color: C.slate, fontSize: 13.5, margin: "0 0 26px" }}>Sign up to get started.</p>
+          <h1 className="signup-title">Create an account</h1>
+          <p className="signup-subtitle">Sign up to get started.</p>
 
           <form onSubmit={submit}>
-            <div style={{ display: "flex", gap: 12 }}>
-              <div style={{ flex: 1 }}>
-                <Input label="First Name" type="text" value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="Jane" />
+            <div className="signup-name-row">
+              <div className="signup-name-col">
+                <Input
+                  label="First Name"
+                  type="text"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  placeholder="Jane"
+                />
               </div>
-              <div style={{ flex: 1 }}>
-                <Input label="Last Name" type="text" value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Doe" />
+              <div className="signup-name-col">
+                <Input
+                  label="Last Name"
+                  type="text"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  placeholder="Doe"
+                />
               </div>
             </div>
-            <Input label="Work email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@company.com" />
-            <Input label="Password" type="text" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Enter password (min 8 characters)" />
-            {error && <p style={{ color: C.coral, fontSize: 12.5, marginTop: -6, marginBottom: 14 }}>{error}</p>}
-            
-            <button type="submit" disabled={loading} style={{ width: "100%", background: C.ink, color: "#fff", border: "none", padding: "11px 0", borderRadius: 8, fontFamily: "Sora, sans-serif", fontWeight: 700, fontSize: 14.5, cursor: loading ? "wait" : "pointer", opacity: loading ? 0.7 : 1, marginBottom: 18 }}>
+            <Input
+              label="Work email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@company.com"
+            />
+            <Input
+              label="Password"
+              type="text"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Enter password (min 8 characters)"
+            />
+            {error && <p className="signup-error-msg">{error}</p>}
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="signup-submit-btn"
+            >
               {loading ? "Signing up..." : "Sign up"}
             </button>
           </form>
-          
-          <p style={{ fontSize: 13.5, color: C.slate, textAlign: "center" }}>Already have an account?{" "}
-            <span onClick={onNavigateLogin} style={{ color: C.teal, fontWeight: 600, cursor: "pointer" }}>Sign in</span>
+
+          <p className="signup-footer-text">
+            Already have an account?{" "}
+            <span onClick={onNavigateLogin} className="signup-link">
+              Sign in
+            </span>
           </p>
         </div>
       </div>
 
       {/* Right panel */}
-      <div style={{ flex: 1, background: C.ink, display: "flex", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden" }}>
-        <div style={{ position: "absolute", width: 360, height: 360, borderRadius: "50%", border: "1px solid rgba(255,255,255,0.08)", top: -60, right: -60 }} />
-        <div style={{ position: "absolute", width: 220, height: 220, borderRadius: "50%", border: "1px solid rgba(31,138,112,0.35)", bottom: -40, left: -20 }} />
-        <div style={{ maxWidth: 380, padding: 40, position: "relative" }}>
-          <p style={{ color: C.teal, fontFamily: "IBM Plex Mono, monospace", fontSize: 12.5, letterSpacing: 1, marginBottom: 14 }}>JOIN NEXORA</p>
-          <h2 style={{ color: "#fff", fontFamily: "Sora, sans-serif", fontSize: 28, fontWeight: 700, lineHeight: 1.3 }}>Start managing your workforce better today.</h2>
+      <div className="signup-right-panel">
+        <div className="signup-bg-circle-1" />
+        <div className="signup-bg-circle-2" />
+        <div className="signup-promo-box">
+          <p className="signup-promo-tag">JOIN NEXORA</p>
+          <h2 className="signup-promo-title">
+            Start managing your workforce better today.
+          </h2>
         </div>
       </div>
     </div>

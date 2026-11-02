@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.db.models import Avg, Count, Sum
 from django.utils import timezone
 from rest_framework import status, viewsets
@@ -237,8 +238,41 @@ class LeaveRequestViewSet(viewsets.ModelViewSet):
 
 # ── Attendance ────────────────────────────────────────────────────────────────
 
+def ensure_absent_records_for_date(target_date=None):
+    """
+    Ensures that all active employees who have not punched in on `target_date`
+    have an Attendance record created with status=ABSENT, check_in='--', check_out='--'.
+    """
+    if not target_date:
+        target_date = timezone.localdate()
+
+    active_employees = Employee.objects.exclude(status=Employee.Status.INACTIVE).filter(
+        join_date__lte=target_date
+    )
+    existing_emp_ids = set(
+        Attendance.objects.filter(
+            date=target_date,
+            employee__in=active_employees
+        ).values_list("employee_id", flat=True)
+    )
+
+    missing_employees = [emp for emp in active_employees if emp.id not in existing_emp_ids]
+    if missing_employees:
+        new_records = [
+            Attendance(
+                employee=emp,
+                date=target_date,
+                check_in="--",
+                check_out="--",
+                status=Attendance.Status.ABSENT,
+            )
+            for emp in missing_employees
+        ]
+        Attendance.objects.bulk_create(new_records, ignore_conflicts=True)
+
+
 class AttendanceViewSet(viewsets.ModelViewSet):
-    queryset         = Attendance.objects.select_related("employee", "employee__department", "employee__shift").all()
+    queryset         = Attendance.objects.select_related("employee", "employee__department", "employee__shift").order_by("-date", "employee__name")
     filterset_fields = ["status", "date", "employee"]
     search_fields    = ["employee__name", "employee__employee_code"]
     ordering_fields  = ["date"]
@@ -253,6 +287,21 @@ class AttendanceViewSet(viewsets.ModelViewSet):
         if getattr(user, "role", None) == "employee" or self.request.query_params.get("mine") == "true":
             return qs.filter(employee__email=user.email)
         return qs
+
+    def list(self, request, *args, **kwargs):
+        date_param = request.query_params.get("date")
+        if date_param:
+            try:
+                from datetime import datetime
+                target = datetime.strptime(date_param, "%Y-%m-%d").date()
+                if target <= timezone.localdate():
+                    ensure_absent_records_for_date(target)
+            except Exception:
+                pass
+        else:
+            ensure_absent_records_for_date(timezone.localdate())
+
+        return super().list(request, *args, **kwargs)
 
     def create(self, request, *args, **kwargs):
         emp_id = request.data.get("employee")
@@ -269,16 +318,26 @@ class AttendanceViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=["get"])
     def today(self, request):
         today = timezone.localdate()
+        ensure_absent_records_for_date(today)
         qs    = self.get_queryset().filter(date=today)
         return Response(AttendanceListSerializer(qs, many=True).data)
 
     @action(detail=False, methods=["get"])
     def summary(self, request):
-        date = request.query_params.get("date", str(timezone.localdate()))
-        qs   = self.get_queryset().filter(date=date)
+        date_str = request.query_params.get("date")
+        target_date = timezone.localdate()
+        if date_str:
+            try:
+                from datetime import datetime
+                target_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+            except ValueError:
+                target_date = timezone.localdate()
+
+        ensure_absent_records_for_date(target_date)
+        qs   = self.get_queryset().filter(date=target_date)
         data = qs.values("status").annotate(count=Count("id"))
         total_active = Employee.objects.filter(status=Employee.Status.ACTIVE).count()
-        return Response({"date": date, "total_active": total_active, "breakdown": list(data)})
+        return Response({"date": str(target_date), "total_active": total_active, "breakdown": list(data)})
 
     @action(detail=False, methods=["get"], url_path="today-status")
     def today_status(self, request):
@@ -528,16 +587,22 @@ class PayrollViewSet(viewsets.ModelViewSet):
         """
         Auto-generate payroll for all active employees for a given month.
         - Basic pay  = Employee's salary (set at joining, stays fixed)
-        - Deductions = (salary / 30) × approved leave days in that month
-        - Net pay    = basic - deductions
+        - Deductions = (salary / 30) × days absent in that month
+        - Net pay    = max(0, basic + allowances - deductions)
         """
         import calendar
-        from datetime import date
+        from datetime import date, timedelta
 
         month = request.data.get("month")
         if not month:
             return Response({"detail": "month is required (e.g. 'July 2026')."}, status=status.HTTP_400_BAD_REQUEST)
-        month = month.strip()
+
+        # Handle object format e.g. {"month": "October", "year": "2026"}
+        if isinstance(month, dict):
+            m_val = month.get("month", "")
+            y_val = month.get("year", "")
+            month = f"{m_val} {y_val}".strip()
+        month = str(month).strip()
 
         # Check if payroll already exists for this month in database
         if Payroll.objects.filter(month__iexact=month).exists():
@@ -557,7 +622,7 @@ class PayrollViewSet(viewsets.ModelViewSet):
                 "May": 5, "June": 6, "July": 7, "August": 8,
                 "September": 9, "October": 10, "November": 11, "December": 12,
             }
-            m_num = month_names.get(parts[0])
+            m_num = month_names.get(parts[0].capitalize())
             y_num = int(parts[1])
             if not m_num:
                 raise ValueError("Invalid month name")
@@ -569,6 +634,15 @@ class PayrollViewSet(viewsets.ModelViewSet):
                 status=400,
             )
 
+        # Populate absent records up to today (or end of month) so attendance records exist
+        today = timezone.localdate()
+        cutoff_date = min(today, month_end)
+        if month_start <= cutoff_date:
+            curr_date = month_start
+            while curr_date <= cutoff_date:
+                ensure_absent_records_for_date(curr_date)
+                curr_date += timedelta(days=1)
+
         employees = Employee.objects.filter(status=Employee.Status.ACTIVE)
         created = 0
         results = []
@@ -577,23 +651,38 @@ class PayrollViewSet(viewsets.ModelViewSet):
             salary = float(emp.salary)
             basic  = round(salary, 2)
 
-            # Count approved leave days that overlap with this month
+            # Dates where the employee had approved paid leaves (not considered unexcused absent)
+            approved_paid_leave_dates = set()
             approved_leaves = LeaveRequest.objects.filter(
                 employee=emp,
                 status=LeaveRequest.Status.APPROVED,
                 from_date__lte=month_end,
                 to_date__gte=month_start,
             )
-            total_leave_days = 0
             for leave in approved_leaves:
-                # Clamp leave dates to the month boundaries
-                eff_start = max(leave.from_date, month_start)
-                eff_end   = min(leave.to_date, month_end)
-                days_in_month = (eff_end - eff_start).days + 1
-                total_leave_days += max(0, days_in_month)
+                if not leave.leave_type or leave.leave_type.is_paid:
+                    eff_start = max(leave.from_date, month_start)
+                    eff_end   = min(leave.to_date, month_end)
+                    curr = eff_start
+                    while curr <= eff_end:
+                        approved_paid_leave_dates.add(curr)
+                        curr += timedelta(days=1)
+
+            # Count absent records in this month from Attendance table
+            # Exclude dates that were approved as paid leave
+            absent_records = Attendance.objects.filter(
+                employee=emp,
+                date__gte=month_start,
+                date__lte=month_end,
+                status=Attendance.Status.ABSENT,
+            )
+            absent_days = 0
+            for att in absent_records:
+                if att.date not in approved_paid_leave_dates:
+                    absent_days += 1
 
             per_day      = round(salary / 30, 2)
-            deductions   = round(per_day * total_leave_days, 2)
+            deductions   = round(per_day * absent_days, 2)
             allowances   = 0
             net          = round(max(0, basic + allowances - deductions), 2)
 
@@ -611,7 +700,7 @@ class PayrollViewSet(viewsets.ModelViewSet):
                 results.append({
                     "employee": emp.name,
                     "basic": basic,
-                    "leave_days": total_leave_days,
+                    "absent_days": absent_days,
                     "deductions": deductions,
                     "net": net,
                 })
@@ -706,6 +795,7 @@ class ExpenseViewSet(viewsets.ModelViewSet):
 # ── Recruitment ───────────────────────────────────────────────────────────────
 
 class JobViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsAuthenticated, HasActiveSubscription]
     queryset         = Job.objects.select_related("department").prefetch_related("candidates").all()
     filterset_fields = ["status", "department", "job_type"]
     search_fields    = ["title", "location"]
@@ -714,17 +804,103 @@ class JobViewSet(viewsets.ModelViewSet):
     def get_serializer_class(self):
         return JobListSerializer if self.action == "list" else JobSerializer
 
+    def list(self, request, *args, **kwargs):
+        qs = self.filter_queryset(self.get_queryset())
+        if not qs.exists() and not request.query_params:
+            self._seed_sample_jobs()
+            qs = self.filter_queryset(self.get_queryset())
+        serializer = JobListSerializer(qs, many=True)
+        return Response(serializer.data)
+
+    def _seed_sample_jobs(self):
+        dept_eng, _   = Department.objects.get_or_create(name="Engineering", defaults={"color": "#1F8A70"})
+        dept_hr, _    = Department.objects.get_or_create(name="Human Resources", defaults={"color": "#3B82F6"})
+        dept_sales, _ = Department.objects.get_or_create(name="Sales", defaults={"color": "#F59E0B"})
+        dept_mkt, _   = Department.objects.get_or_create(name="Marketing", defaults={"color": "#EC4899"})
+
+        sample_jobs = [
+            ("Senior Frontend Engineer", dept_eng,   "Bengaluru", Job.JobType.FULL_TIME, 2, Job.Status.OPEN),
+            ("HR Business Partner",      dept_hr,    "Ahmedabad", Job.JobType.FULL_TIME, 1, Job.Status.OPEN),
+            ("Sales Development Rep",    dept_sales, "Remote",    Job.JobType.FULL_TIME, 3, Job.Status.OPEN),
+            ("Financial Analyst",        dept_hr,    "Mumbai",    Job.JobType.FULL_TIME, 1, Job.Status.OPEN),
+        ]
+        for title, dept, loc, jtype, openings, status in sample_jobs:
+            Job.objects.get_or_create(
+                title=title,
+                defaults={
+                    "department": dept,
+                    "location": loc,
+                    "job_type": jtype,
+                    "openings": openings,
+                    "status": status,
+                }
+            )
+
+    def create(self, request, *args, **kwargs):
+        data = request.data.copy() if hasattr(request.data, "copy") else dict(request.data)
+        dept_val = data.get("department")
+        if dept_val and not str(dept_val).isdigit():
+            dept = Department.objects.filter(name__iexact=str(dept_val).strip()).first()
+            if not dept:
+                dept = Department.objects.create(name=str(dept_val).strip())
+            data["department"] = dept.id
+        elif not dept_val:
+            dept = Department.objects.first()
+            if not dept:
+                dept = Department.objects.create(name="Engineering")
+            data["department"] = dept.id
+
+        if not data.get("openings"):
+            data["openings"] = 1
+        if not data.get("job_type"):
+            data["job_type"] = "Full-time"
+        if not data.get("location"):
+            data["location"] = "Remote"
+
+        serializer = JobSerializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        job = serializer.save()
+
+        dept_name = job.department.name if job.department else "General"
+        actor = request.user.first_name or "HR Admin"
+
+        # 1. Broadcast notification to all employees in their panel
+        create_notification(
+            title=f"New Job Opening: {job.title}",
+            message=f"We are hiring! {job.title} in {dept_name} ({job.location}, {job.job_type}) with {job.openings} opening(s).",
+            event_type="recruitment",
+            tone="teal",
+            actor_name=actor,
+            link="recruitment",
+        )
+
+        # 2. Company announcement visible on employee panel
+        Announcement.objects.create(
+            title=f"New Job Opening: {job.title}",
+            content=f"A new position '{job.title}' has been posted for {dept_name}. Location: {job.location} | Type: {job.job_type} | Openings: {job.openings}.",
+            priority=Announcement.Priority.HIGH,
+            is_active=True,
+        )
+
+        return Response(JobListSerializer(job).data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=["post"])
+    def toggle_status(self, request, pk=None):
+        job = self.get_object()
+        job.status = Job.Status.CLOSED if job.status == Job.Status.OPEN else Job.Status.OPEN
+        job.save(update_fields=["status"])
+        return Response(JobListSerializer(job).data)
+
     @action(detail=True, methods=["post"])
     def close(self, request, pk=None):
         job = self.get_object()
         job.status = Job.Status.CLOSED
         job.save(update_fields=["status"])
-        return Response({"detail": "Job closed."})
-
-    permission_classes = [IsAuthenticated,HasActiveSubscription]
+        return Response(JobListSerializer(job).data)
 
 
 class CandidateViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsAuthenticated, HasActiveSubscription]
     queryset         = Candidate.objects.select_related("job").all()
     filterset_fields = ["stage", "job"]
     search_fields    = ["name", "email"]
@@ -733,6 +909,173 @@ class CandidateViewSet(viewsets.ModelViewSet):
     def get_serializer_class(self):
         return CandidateListSerializer if self.action == "list" else CandidateSerializer
 
+    def list(self, request, *args, **kwargs):
+        # Auto-transfer any candidates that were marked Hired to Employees
+        hired_candidates = list(Candidate.objects.filter(stage=Candidate.Stage.HIRED))
+        for cand in hired_candidates:
+            self._hire_candidate_internal(cand)
+
+        qs = self.get_queryset()
+        if not qs.exists():
+            self._seed_sample_candidates()
+            qs = self.get_queryset()
+        return Response(CandidateListSerializer(qs, many=True).data)
+
+    def _seed_sample_candidates(self):
+        job = Job.objects.first()
+        if not job:
+            dept = Department.objects.first() or Department.objects.create(name="Engineering")
+            job = Job.objects.create(
+                title="Full Stack Developer",
+                department=dept,
+                location="Remote",
+                job_type=Job.JobType.FULL_TIME,
+                openings=2,
+                status=Job.Status.OPEN,
+            )
+        sample_data = [
+            ("Aditi Rao", "aditi.rao@gmail.com", Candidate.Stage.APPLIED, 0),
+            ("Yash Trivedi", "yash.t@gmail.com", Candidate.Stage.SCREENING, 0),
+            ("Simran Kaur", "simran.k@gmail.com", Candidate.Stage.INTERVIEW, 0),
+            ("Devansh Patel", "devansh.p@gmail.com", Candidate.Stage.OFFER, 85000),
+            ("Farhan Sheikh", "farhan.s@gmail.com", Candidate.Stage.REJECTED, 0),
+        ]
+        today = timezone.localdate()
+        for name, email, stage, sal in sample_data:
+            c = Candidate.objects.create(
+                job=job,
+                name=name,
+                email=email,
+                stage=stage,
+                applied_date=today,
+            )
+            if sal:
+                c.salary = sal
+                c.save(update_fields=["notes"])
+
+    def _hire_candidate_internal(self, candidate, actor="HR Admin"):
+        emp = Employee.objects.filter(email=candidate.email).first()
+        dept = candidate.job.department if candidate.job else None
+        role_title = candidate.job.title if candidate.job else "Employee"
+        loc = candidate.job.location if candidate.job else "Remote"
+        salary_val = float(getattr(candidate, "salary", 0) or 0)
+
+        if not emp:
+            desig = None
+            if dept and role_title:
+                try:
+                    desig, _ = Designation.objects.get_or_create(title=role_title, department=dept)
+                except Exception:
+                    pass
+
+            emp = Employee.objects.create(
+                name=candidate.name,
+                email=candidate.email,
+                phone=candidate.phone or "",
+                role=role_title,
+                department=dept,
+                designation=desig,
+                location=loc,
+                join_date=timezone.localdate(),
+                salary=salary_val,
+                status=Employee.Status.ACTIVE,
+            )
+        else:
+            emp.status = Employee.Status.ACTIVE
+            if dept:
+                emp.department = dept
+            emp.role = role_title
+            if salary_val > 0:
+                emp.salary = salary_val
+            emp.save()
+
+        dept_name = emp.department.name if emp.department else "General"
+        sal_msg = f" at ₹{salary_val:,.2f}" if salary_val > 0 else ""
+
+        create_notification(
+            title=f"New Hire: {candidate.name}",
+            message=f"{candidate.name} has been hired as {emp.role} ({dept_name}){sal_msg} and added to the Employee Directory.",
+            event_type="recruitment",
+            tone="teal",
+            actor_name=actor,
+            link="employees",
+        )
+
+        try:
+            Announcement.objects.create(
+                title=f"Welcome {candidate.name}!",
+                content=f"Please join us in welcoming {candidate.name}, who has joined as {emp.role} in {dept_name}!",
+                priority=Announcement.Priority.MEDIUM,
+                is_active=True,
+            )
+        except Exception:
+            pass
+
+        cand_id = candidate.id
+        cand_name = candidate.name
+        candidate.delete()
+        return emp, cand_id, cand_name
+
+    def _hire_candidate(self, request, candidate):
+        actor = request.user.first_name or "HR Admin" if getattr(request, "user", None) else "HR Admin"
+        emp, cand_id, cand_name = self._hire_candidate_internal(candidate, actor=actor)
+        dept_name = emp.department.name if emp.department else "General"
+        sal_val = float(emp.salary)
+        sal_txt = f" with offered salary ₹{sal_val:,.2f}" if sal_val > 0 else ""
+        return Response({
+            "id": cand_id,
+            "hired": True,
+            "removed_from_candidates": True,
+            "message": f"{cand_name} has been hired{sal_txt} and added to the Employee Directory.",
+            "employee": {
+                "id": emp.id,
+                "employee_code": emp.employee_code,
+                "name": emp.name,
+                "email": emp.email,
+                "role": emp.role,
+                "salary": sal_val,
+                "department": dept_name,
+            }
+        }, status=status.HTTP_200_OK)
+
+    def create(self, request, *args, **kwargs):
+        data = request.data.copy() if hasattr(request.data, "copy") else dict(request.data)
+        job_val = data.get("job")
+        if job_val and not str(job_val).isdigit():
+            job_obj = Job.objects.filter(title__iexact=str(job_val).strip()).first()
+            if not job_obj:
+                dept = Department.objects.first() or Department.objects.create(name="Engineering")
+                job_obj = Job.objects.create(title=str(job_val).strip(), department=dept, location="Remote")
+            data["job"] = job_obj.id
+        elif not job_val:
+            first_job = Job.objects.first()
+            if not first_job:
+                dept = Department.objects.first() or Department.objects.create(name="Engineering")
+                first_job = Job.objects.create(title="General Position", department=dept, location="Remote")
+            data["job"] = first_job.id
+
+        if not data.get("applied_date"):
+            data["applied_date"] = str(timezone.localdate())
+
+        serializer = CandidateSerializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        candidate = serializer.save()
+
+        if candidate.stage == Candidate.Stage.HIRED:
+            return self._hire_candidate(request, candidate)
+
+        return Response(CandidateListSerializer(candidate).data, status=status.HTTP_201_CREATED)
+
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop("partial", False)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        candidate = serializer.save()
+        if candidate.stage == Candidate.Stage.HIRED:
+            return self._hire_candidate(request, candidate)
+        return Response(CandidateListSerializer(candidate).data)
+
     @action(detail=True, methods=["post"])
     def move_stage(self, request, pk=None):
         candidate = self.get_object()
@@ -740,20 +1083,30 @@ class CandidateViewSet(viewsets.ModelViewSet):
         valid = [s[0] for s in Candidate.Stage.choices]
         if new_stage not in valid:
             return Response({"detail": f"Invalid stage. Choose from: {valid}"}, status=400)
+
+        salary_val = request.data.get("salary")
+        if salary_val is not None and salary_val != "":
+            try:
+                candidate.salary = float(salary_val)
+            except (ValueError, TypeError):
+                pass
+
+        if new_stage == Candidate.Stage.HIRED:
+            return self._hire_candidate(request, candidate)
+
         candidate.stage = new_stage
-        candidate.save(update_fields=["stage"])
+        candidate.save()
         actor = request.user.first_name or "HR Admin"
         create_notification(
             title="Candidate Stage Changed",
             message=f"moved {candidate.name} to {new_stage} stage",
-            event_type="recruitment",
+            event_type="candidate",
             tone="blue",
             actor_name=actor,
             link="recruitment",
         )
-        return Response(CandidateSerializer(candidate).data)
-
-    permission_classes = [IsAuthenticated,HasActiveSubscription]
+        return Response(CandidateListSerializer(candidate).data)
+        return Response(CandidateListSerializer(candidate).data)
 
 
 # ── Performance ───────────────────────────────────────────────────────────────
@@ -856,6 +1209,7 @@ class AnnouncementViewSet(viewsets.ModelViewSet):
 class DashboardStatsView(APIView):
     def get(self, request):
         today    = timezone.localdate()
+        ensure_absent_records_for_date(today)
         employees = Employee.objects.all()
         leaves    = LeaveRequest.objects.all()
         att_today = Attendance.objects.filter(date=today)
@@ -903,7 +1257,11 @@ class HealthCheckView(APIView):
     permission_classes = []
 
     def get(self, request):
-        return Response({"status": "ok", "service": "Nexora HRM API"})
+        return Response({
+            "status": "ok",
+            "service": "Nexora HRM API",
+            "server_session": getattr(settings, "SERVER_SESSION_ID", None),
+        })
 
 
 # ── Notifications ──────────────────────────────────────────────────────────────
@@ -919,6 +1277,18 @@ class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
 
     queryset = Notification.objects.order_by("-created_at")
 
+    def get_queryset(self):
+        user = self.request.user
+        qs = super().get_queryset()
+        # Employees should ONLY see recruitment / job notifications
+        if getattr(user, "role", None) == "employee":
+            from django.db.models import Q
+            return qs.filter(
+                Q(event_type__in=["job", "job_posting"]) |
+                (Q(event_type="recruitment") & (Q(title__icontains="job") | Q(title__icontains="hiring") | Q(message__icontains="hiring")))
+            )
+        return qs
+
     def list(self, request, *args, **kwargs):
         qs = self.get_queryset()[:50]
         return Response(self.get_serializer(qs, many=True).data)
@@ -932,17 +1302,17 @@ class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
 
     @action(detail=False, methods=["post"], url_path="mark-all-read")
     def mark_all_read(self, request):
-        Notification.objects.filter(is_read=False).update(is_read=True)
+        self.get_queryset().filter(is_read=False).update(is_read=True)
         return Response({"marked": "all"})
 
     @action(detail=False, methods=["get"], url_path="unread-count")
     def unread_count(self, request):
-        count = Notification.objects.filter(is_read=False).count()
+        count = self.get_queryset().filter(is_read=False).count()
         return Response({"unread": count})
 
     @action(detail=False, methods=["get"], url_path="activity-feed")
     def activity_feed(self, request):
         """Latest 10 notifications formatted as a Recent Activity feed."""
-        items = Notification.objects.order_by("-created_at")[:10]
+        items = self.get_queryset()[:10]
         return Response(NotificationSerializer(items, many=True).data)
 

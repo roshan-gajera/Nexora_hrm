@@ -1,0 +1,314 @@
+/* AttendancePage.css */
+.attendance-header-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* Date Filtering Bar */
+.attendance-date-bar {
+  background: var(--color-panel, #ffffff);
+  border: 1px solid var(--color-border, #e2e7ef);
+  border-radius: 12px;
+  padding: 14px 18px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.attendance-date-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.attendance-date-label {
+  font-family: var(--font-body, "Inter", sans-serif);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-slate, #5c6b7a);
+}
+
+.attendance-date-pill-group {
+  display: flex;
+  background: var(--color-canvas, #f4f6f9);
+  padding: 3px;
+  border-radius: 8px;
+  gap: 4px;
+}
+
+.attendance-date-pill-btn {
+  border: none;
+  background: transparent;
+  color: var(--color-slate, #5c6b7a);
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-family: var(--font-body, "Inter", sans-serif);
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.attendance-date-pill-btn.active {
+  background: #ffffff;
+  color: var(--color-ink, #14213d);
+  font-weight: 600;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+
+.attendance-date-pill-btn.active-teal {
+  background: #ffffff;
+  color: var(--color-teal, #1f8a70);
+  font-weight: 700;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+
+.attendance-date-input {
+  border: 1px solid var(--color-border, #e2e7ef);
+  border-radius: 8px;
+  padding: 5px 10px;
+  font-family: var(--font-body, "Inter", sans-serif);
+  font-size: 13px;
+  color: var(--color-ink, #14213d);
+  outline: none;
+}
+
+.attendance-record-count {
+  font-family: var(--font-body, "Inter", sans-serif);
+  font-size: 13px;
+  color: var(--color-slate, #5c6b7a);
+}
+
+.attendance-record-count strong {
+  color: var(--color-ink, #14213d);
+}
+
+/* KPI Cards */
+.attendance-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.attendance-kpi-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.attendance-kpi-label {
+  font-size: 12.5px;
+  color: var(--color-slate, #5c6b7a);
+  font-weight: 600;
+}
+
+.attendance-kpi-icon-box {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.attendance-kpi-val {
+  font-family: var(--font-display, "Sora", sans-serif);
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--color-ink, #14213d);
+}
+
+.attendance-kpi-sub {
+  font-size: 11.5px;
+  color: var(--color-slate-light, #8a97a6);
+  margin-top: 4px;
+}
+
+/* Toolbar */
+.attendance-toolbar {
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--color-border, #e2e7ef);
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.attendance-status-pills {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.attendance-status-pill-item {
+  cursor: pointer;
+}
+
+.attendance-search-filter-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.attendance-search-box {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--color-canvas, #f4f6f9);
+  padding: 6px 12px;
+  border-radius: 8px;
+  width: 220px;
+}
+
+.attendance-search-input {
+  border: none;
+  background: transparent;
+  outline: none;
+  font-family: var(--font-body, "Inter", sans-serif);
+  font-size: 13px;
+  width: 100%;
+  color: var(--color-ink, #14213d);
+}
+
+.attendance-dept-select {
+  border: 1px solid var(--color-border, #e2e7ef);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-family: var(--font-body, "Inter", sans-serif);
+  font-size: 13px;
+  color: var(--color-ink, #14213d);
+  outline: none;
+  background: #ffffff;
+}
+
+/* Table */
+.attendance-loading {
+  padding: 40px;
+  text-align: center;
+  color: var(--color-slate, #5c6b7a);
+}
+
+.attendance-empty {
+  padding: 36px;
+}
+
+.attendance-table-row {
+  border-bottom: 1px solid var(--color-border, #e2e7ef);
+}
+
+.attendance-table-cell {
+  padding: 12px 14px;
+}
+
+.attendance-employee-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.attendance-employee-name {
+  font-weight: 600;
+  color: var(--color-ink, #14213d);
+}
+
+.attendance-code-cell {
+  font-family: var(--font-mono, monospace);
+  font-size: 13px;
+  color: var(--color-slate, #5c6b7a);
+}
+
+.attendance-muted-cell {
+  color: var(--color-slate, #5c6b7a);
+}
+
+.attendance-time-cell {
+  color: var(--color-ink, #14213d);
+  font-family: var(--font-mono, monospace);
+  font-size: 13px;
+}
+
+.attendance-time-flex {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.attendance-hours-cell {
+  font-family: var(--font-mono, monospace);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.attendance-hours-cell.active {
+  color: var(--color-teal, #1f8a70);
+}
+
+.attendance-hours-cell.muted {
+  color: var(--color-slate-light, #8a97a6);
+}
+
+.attendance-edit-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--color-slate-light, #8a97a6);
+  display: flex;
+  align-items: center;
+  padding: 4px;
+  border-radius: 4px;
+  transition: color 0.15s;
+}
+
+.attendance-edit-btn:hover {
+  color: var(--color-ink, #14213d);
+}
+
+/* Modal Form */
+.attendance-form-group {
+  display: block;
+  margin-bottom: 14px;
+}
+
+.attendance-form-label {
+  display: block;
+  font-family: var(--font-body, "Inter", sans-serif);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--color-slate, #5c6b7a);
+  margin-bottom: 5px;
+}
+
+.attendance-form-select {
+  width: 100%;
+  box-sizing: border-box;
+  font-family: var(--font-body, "Inter", sans-serif);
+  font-size: 14px;
+  padding: 9px 12px;
+  border-radius: 7px;
+  border: 1px solid var(--color-border, #e2e7ef);
+  outline: none;
+  color: var(--color-ink, #14213d);
+  background: #ffffff;
+}
+
+.attendance-form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.attendance-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+

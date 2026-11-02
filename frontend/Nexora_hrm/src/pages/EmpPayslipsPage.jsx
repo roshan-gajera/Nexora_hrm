@@ -4,6 +4,7 @@ import { C } from "../constants/theme";
 import { fmtMoney, statusTone } from "../utils/helpers";
 import { Card, PageHeader, Button, Table, Modal, Pill, EmptyState } from "../components/ui";
 import { fetchMyPayslips } from "../api/employeePortalApi";
+import "../styles/EmpPayslipsPage.css";
 
 export default function EmpPayslipsPage() {
   const [payslips, setPayslips] = useState([]);
@@ -48,7 +49,7 @@ export default function EmpPayslipsPage() {
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `Payslip_${(p.name || "Employee").replace(/\\s+/g, "_")}_${(p.month || "Month").replace(/\\s+/g, "_")}.csv`);
+    link.setAttribute("download", `Payslip_${(p.name || "Employee").replace(/\s+/g, "_")}_${(p.month || "Month").replace(/\s+/g, "_")}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -64,7 +65,7 @@ export default function EmpPayslipsPage() {
 
   if (loading) {
     return (
-      <div style={{ padding: 40, textAlign: "center", color: C.slate, fontFamily: "Inter, sans-serif" }}>
+      <div className="emp-payslips-loading">
         Loading your payslips...
       </div>
     );
@@ -83,103 +84,113 @@ export default function EmpPayslipsPage() {
       />
 
       {/* Overview Cards */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16, marginBottom: 24 }}>
-        <Card accent={C.teal} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-            <span style={{ fontFamily: "Inter, sans-serif", fontSize: 12.5, color: C.slate, fontWeight: 600 }}>Total Earned (YTD)</span>
-            <div style={{ width: 32, height: 32, borderRadius: 8, background: C.tealSoft, display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <Wallet size={16} color={C.teal} />
+      <div className="emp-payslips-overview-grid">
+        <Card accent={C.teal}>
+          <div className="emp-payslips-card-body">
+            <div className="emp-payslips-card-header">
+              <span className="emp-payslips-card-label">Total Earned (YTD)</span>
+              <div className="emp-payslips-icon-box" style={{ background: C.tealSoft }}>
+                <Wallet size={16} color={C.teal} />
+              </div>
             </div>
-          </div>
-          <div style={{ fontFamily: "Sora, sans-serif", fontSize: 26, fontWeight: 700, color: C.ink }}>{fmtMoney(totalEarned)}</div>
-          <div style={{ fontFamily: "Inter, sans-serif", fontSize: 12, color: C.teal, fontWeight: 600 }}>
-            {paidCount} payslips processed
+            <div className="emp-payslips-card-val">{fmtMoney(totalEarned)}</div>
+            <div className="emp-payslips-card-sub teal">
+              {paidCount} payslips processed
+            </div>
           </div>
         </Card>
 
-        <Card accent={C.blue} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-            <span style={{ fontFamily: "Inter, sans-serif", fontSize: 12.5, color: C.slate, fontWeight: 600 }}>Latest Payslip</span>
-            <div style={{ width: 32, height: 32, borderRadius: 8, background: C.blueSoft, display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <FileText size={16} color={C.blue} />
+        <Card accent={C.blue}>
+          <div className="emp-payslips-card-body">
+            <div className="emp-payslips-card-header">
+              <span className="emp-payslips-card-label">Latest Payslip</span>
+              <div className="emp-payslips-icon-box" style={{ background: C.blueSoft }}>
+                <FileText size={16} color={C.blue} />
+              </div>
             </div>
-          </div>
-          <div style={{ fontFamily: "Sora, sans-serif", fontSize: 26, fontWeight: 700, color: C.ink }}>
-            {latestPayslip ? fmtMoney(latestPayslip.net || latestPayslip.net_salary || 0) : "—"}
-          </div>
-          <div style={{ fontFamily: "Inter, sans-serif", fontSize: 12, color: C.blue, fontWeight: 600 }}>
-            {latestPayslip?.month || "No data"}
+            <div className="emp-payslips-card-val">
+              {latestPayslip ? fmtMoney(latestPayslip.net || latestPayslip.net_salary || 0) : "—"}
+            </div>
+            <div className="emp-payslips-card-sub blue">
+              {latestPayslip?.month || "No data"}
+            </div>
           </div>
         </Card>
 
-        <Card accent={C.amber} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-            <span style={{ fontFamily: "Inter, sans-serif", fontSize: 12.5, color: C.slate, fontWeight: 600 }}>Pending</span>
-            <div style={{ width: 32, height: 32, borderRadius: 8, background: C.amberSoft, display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <Calendar size={16} color={C.amber} />
+        <Card accent={C.amber}>
+          <div className="emp-payslips-card-body">
+            <div className="emp-payslips-card-header">
+              <span className="emp-payslips-card-label">Pending</span>
+              <div className="emp-payslips-icon-box" style={{ background: C.amberSoft }}>
+                <Calendar size={16} color={C.amber} />
+              </div>
             </div>
-          </div>
-          <div style={{ fontFamily: "Sora, sans-serif", fontSize: 26, fontWeight: 700, color: C.ink }}>{pendingCount}</div>
-          <div style={{ fontFamily: "Inter, sans-serif", fontSize: 12, color: C.amber, fontWeight: 600 }}>
-            {pendingCount === 0 ? "All clear" : "Awaiting processing"}
+            <div className="emp-payslips-card-val">{pendingCount}</div>
+            <div className="emp-payslips-card-sub amber">
+              {pendingCount === 0 ? "All clear" : "Awaiting processing"}
+            </div>
           </div>
         </Card>
       </div>
 
       {/* Payslips Table */}
-      <Card style={{ padding: 0 }}>
-        <div style={{ padding: "16px 20px", borderBottom: `1px solid ${C.border}`, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <span style={{ fontFamily: "Sora, sans-serif", fontWeight: 700, fontSize: 14, color: C.ink }}>Salary Statements</span>
-          <Pill tone="slate">{payslips.length} total</Pill>
-        </div>
+      <div className="emp-payslips-table-card">
+        <Card style={{ padding: 0 }}>
+          <div className="emp-payslips-table-header">
+            <span className="emp-payslips-table-title">Salary Statements</span>
+            <Pill tone="slate">{payslips.length} total</Pill>
+          </div>
 
-        <Table
-          columns={["Month", "Basic", "Allowances", "Deductions", "Net Salary", "Status", "Actions"]}
-          rows={payslips}
-          renderRow={(p) => (
-            <tr key={p.id} className="hoverable" style={{ borderBottom: `1px solid ${C.border}` }}>
-              <td style={{ padding: "12px 14px" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <div style={{ width: 32, height: 32, borderRadius: 8, background: C.blueSoft, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    <Calendar size={14} color={C.blue} />
+          <Table
+            columns={["Month", "Basic", "Allowances", "Deductions", "Net Salary", "Status", "Actions"]}
+            rows={payslips}
+            renderRow={(p) => (
+              <tr key={p.id} className="hoverable emp-payslips-table-row">
+                <td className="emp-payslips-table-cell">
+                  <div className="emp-payslips-month-cell">
+                    <div className="emp-payslips-calendar-icon">
+                      <Calendar size={14} color={C.blue} />
+                    </div>
+                    <span className="emp-payslips-month-name">{p.month}</span>
                   </div>
-                  <span style={{ fontWeight: 600, color: C.ink }}>{p.month}</span>
-                </div>
-              </td>
-              <td style={{ padding: "12px 14px", color: C.slate }}>{fmtMoney(p.basic || 0)}</td>
-              <td style={{ padding: "12px 14px", color: C.teal }}>{fmtMoney(p.allowances || 0)}</td>
-              <td style={{ padding: "12px 14px", color: C.coral }}>{fmtMoney(p.deductions || 0)}</td>
-              <td style={{ padding: "12px 14px" }}>
-                <span style={{ fontFamily: "Sora, sans-serif", fontWeight: 700, fontSize: 14, color: C.ink }}>
-                  {fmtMoney(p.net || p.net_salary || 0)}
-                </span>
-              </td>
-              <td style={{ padding: "12px 14px" }}>
-                <Pill tone={statusTone(p.status)}>{p.status}</Pill>
-              </td>
-              <td style={{ padding: "12px 14px" }}>
-                <div style={{ display: "flex", gap: 8 }}>
-                  <div
-                    title="View Details"
-                    onClick={() => setDetail(p)}
-                    style={{ width: 30, height: 30, borderRadius: 7, background: C.blueSoft, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
-                  >
-                    <Eye size={14} color={C.blue} />
+                </td>
+                <td className="emp-payslips-table-cell emp-payslips-muted-val">{fmtMoney(p.basic || 0)}</td>
+                <td className="emp-payslips-table-cell emp-payslips-allowance-val">{fmtMoney(p.allowances || 0)}</td>
+                <td className="emp-payslips-table-cell emp-payslips-deduction-val">{fmtMoney(p.deductions || 0)}</td>
+                <td className="emp-payslips-table-cell">
+                  <span className="emp-payslips-net-text">
+                    {fmtMoney(p.net || p.net_salary || 0)}
+                  </span>
+                </td>
+                <td className="emp-payslips-table-cell">
+                  <Pill tone={statusTone(p.status)}>{p.status}</Pill>
+                </td>
+                <td className="emp-payslips-table-cell">
+                  <div className="emp-payslips-action-group">
+                    <button
+                      type="button"
+                      title="View Details"
+                      onClick={() => setDetail(p)}
+                      className="emp-payslips-icon-btn blue"
+                    >
+                      <Eye size={14} color={C.blue} />
+                    </button>
+                    <button
+                      type="button"
+                      title="Download Payslip"
+                      onClick={() => downloadPayslip(p)}
+                      className="emp-payslips-icon-btn teal"
+                    >
+                      <Download size={14} color={C.teal} />
+                    </button>
                   </div>
-                  <div
-                    title="Download Payslip"
-                    onClick={() => downloadPayslip(p)}
-                    style={{ width: 30, height: 30, borderRadius: 7, background: C.tealSoft, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
-                  >
-                    <Download size={14} color={C.teal} />
-                  </div>
-                </div>
-              </td>
-            </tr>
-          )}
-        />
-        {payslips.length === 0 && <EmptyState text="No payslips available yet. They'll appear here once processed." />}
-      </Card>
+                </td>
+              </tr>
+            )}
+          />
+          {payslips.length === 0 && <EmptyState text="No payslips available yet. They'll appear here once processed." />}
+        </Card>
+      </div>
 
       {/* Payslip Detail Modal */}
       {detail && (
@@ -206,7 +217,7 @@ function PayslipDetail({ payslip, onDownload }) {
   return (
     <div>
       {/* Header info */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 20 }}>
+      <div className="payslip-detail-info-grid">
         <InfoRow label="Month" value={payslip.month} />
         <InfoRow label="Status" value={<Pill tone={statusTone(payslip.status)}>{payslip.status}</Pill>} />
         <InfoRow label="Department" value={payslip.department || "—"} />
@@ -214,12 +225,12 @@ function PayslipDetail({ payslip, onDownload }) {
       </div>
 
       {/* Breakdown */}
-      <div style={{ background: C.canvas, borderRadius: 10, padding: 18, marginBottom: 16 }}>
-        <p style={{ fontFamily: "Sora, sans-serif", fontWeight: 700, fontSize: 13, color: C.ink, margin: "0 0 12px" }}>Salary Breakdown</p>
+      <div className="payslip-detail-breakdown-card">
+        <p className="payslip-detail-breakdown-title">Salary Breakdown</p>
         {rows.map((r) => (
-          <div key={r.label} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: `1px solid ${C.border}` }}>
-            <span style={{ fontFamily: "Inter, sans-serif", fontSize: 13, color: C.slate }}>{r.label}</span>
-            <span style={{ fontFamily: "IBM Plex Mono, monospace", fontSize: 13, fontWeight: 600, color: r.type === "deduction" ? C.coral : C.teal }}>
+          <div key={r.label} className="payslip-detail-breakdown-row">
+            <span className="payslip-detail-breakdown-label">{r.label}</span>
+            <span className={`payslip-detail-breakdown-amt ${r.type}`}>
               {r.type === "deduction" ? "−" : "+"}{fmtMoney(r.value)}
             </span>
           </div>
@@ -227,17 +238,12 @@ function PayslipDetail({ payslip, onDownload }) {
       </div>
 
       {/* Net Pay */}
-      <div style={{
-        display: "flex", justifyContent: "space-between", alignItems: "center",
-        padding: "16px 18px", borderRadius: 10,
-        background: `linear-gradient(135deg, ${C.ink} 0%, #1E2E52 100%)`,
-        marginBottom: 16,
-      }}>
-        <span style={{ fontFamily: "Sora, sans-serif", fontWeight: 700, fontSize: 14, color: "rgba(255,255,255,0.8)" }}>Net Pay</span>
-        <span style={{ fontFamily: "Sora, sans-serif", fontWeight: 800, fontSize: 22, color: "#fff" }}>{fmtMoney(netPay)}</span>
+      <div className="payslip-detail-net-banner">
+        <span className="payslip-detail-net-label">Net Pay</span>
+        <span className="payslip-detail-net-val">{fmtMoney(netPay)}</span>
       </div>
 
-      <div style={{ display: "flex", justifyContent: "flex-end" }}>
+      <div className="payslip-detail-footer">
         <Button variant="primary" icon={Download} onClick={() => onDownload && onDownload(payslip)}>
           Download Statement
         </Button>
@@ -249,8 +255,8 @@ function PayslipDetail({ payslip, onDownload }) {
 function InfoRow({ label, value }) {
   return (
     <div>
-      <div style={{ fontFamily: "Inter, sans-serif", fontSize: 11, color: C.slateLight, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 3 }}>{label}</div>
-      <div style={{ fontFamily: "Inter, sans-serif", fontSize: 13.5, color: C.ink, fontWeight: 600 }}>{value}</div>
+      <div className="payslip-detail-info-label">{label}</div>
+      <div className="payslip-detail-info-val">{value}</div>
     </div>
   );
 }

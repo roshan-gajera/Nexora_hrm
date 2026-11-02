@@ -17,6 +17,8 @@ export function clearTokens() {
   localStorage.removeItem("nexora_access_token");
   localStorage.removeItem("nexora_refresh_token");
   localStorage.removeItem("nexora_user");
+  sessionStorage.removeItem("nexora_server_session");
+  window.dispatchEvent(new CustomEvent("nexora:logout"));
 }
 
 export async function request(endpoint, options = {}) {
@@ -41,17 +43,33 @@ export async function request(endpoint, options = {}) {
     let response = await fetch(url, config);
 
     // If 401 Unauthorized, attempt refresh if refresh token exists
-    if (response.status === 401 && getRefreshToken() && !endpoint.includes("/auth/")) {
+    if (response.status === 401 && !endpoint.includes("/auth/login") && !endpoint.includes("/auth/register")) {
       const refreshed = await refreshAccessToken();
       if (refreshed) {
         headers["Authorization"] = `Bearer ${getAccessToken()}`;
         response = await fetch(url, { ...config, headers });
+      } else {
+        clearTokens();
+        const err = new Error("Session expired. Please sign in again.");
+        err.status = 401;
+        throw err;
       }
     }
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      const error = new Error(errorData.detail || errorData.message || `HTTP ${response.status}`);
+      // Extract a human-readable message from DRF responses.
+      // DRF can return { detail: "..." } or { field: ["error msg", ...], ... }
+      let message = errorData.detail || errorData.message;
+      if (!message) {
+        // Flatten field-level errors like { name: ["This field is required."] }
+        const fieldErrors = Object.entries(errorData)
+          .filter(([, v]) => Array.isArray(v) || typeof v === "string")
+          .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(", ") : v}`)
+          .join(" | ");
+        message = fieldErrors || `HTTP ${response.status}`;
+      }
+      const error = new Error(message);
       error.status = response.status;
       error.data = errorData;
       throw error;

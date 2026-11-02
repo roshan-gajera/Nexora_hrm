@@ -1,0 +1,317 @@
+/* DepartmentsPage.css */
+/* Profile Modal */
+.departments-profile-header {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  margin-bottom: 20px;
+  padding: 0 0 18px;
+  border-bottom: 1px solid var(--color-border, #e2e7ef);
+}
+
+.departments-profile-name {
+  font-family: var(--font-display, "Sora", sans-serif);
+  font-weight: 700;
+  font-size: 19px;
+  color: var(--color-ink, #14213d);
+}
+
+.departments-profile-sub {
+  color: var(--color-slate, #5c6b7a);
+  font-size: 13.5px;
+  margin-top: 2px;
+}
+
+.departments-profile-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  font-family: var(--font-body, "Inter", sans-serif);
+  font-size: 13.5px;
+}
+
+.departments-profile-field-label {
+  display: block;
+  color: var(--color-slate-light, #8a97a6);
+  font-size: 11.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.departments-profile-field-val {
+  color: var(--color-ink, #14213d);
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 3px;
+}
+
+.departments-profile-field-val.mono {
+  font-family: var(--font-mono, monospace);
+}
+
+/* Department Grid */
+.departments-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+  margin-bottom: 28px;
+}
+
+.departments-card {
+  background: var(--color-panel, #ffffff);
+  border: 1px solid var(--color-border, #e2e7ef);
+  border-radius: 12px;
+  padding: 20px;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.2s ease;
+}
+
+.departments-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(20, 33, 61, 0.08);
+}
+
+.departments-card.selected {
+  border-color: var(--color-teal, #1f8a70);
+  background: #ffffff;
+  box-shadow: 0 8px 24px rgba(31, 138, 112, 0.12);
+}
+
+.departments-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+
+.departments-card-color-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.departments-card-title {
+  font-family: var(--font-display, "Sora", sans-serif);
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--color-ink, #14213d);
+}
+
+.departments-card-head {
+  font-size: 12px;
+  color: var(--color-slate, #5c6b7a);
+  margin-top: 2px;
+}
+
+.departments-card-icon-box {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.departments-headcount {
+  font-family: var(--font-display, "Sora", sans-serif);
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--color-ink, #14213d);
+  margin-bottom: 12px;
+}
+
+.departments-headcount-sub {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--color-slate-light, #8a97a6);
+}
+
+.departments-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.departments-avatars-pile {
+  display: flex;
+  margin-left: 4px;
+}
+
+.departments-avatar-item {
+  border: 2px solid var(--color-panel, #ffffff);
+  border-radius: 50%;
+}
+
+.departments-avatar-more {
+  margin-left: -10px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--color-canvas, #f4f6f9);
+  border: 2px solid var(--color-panel, #ffffff);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-family: var(--font-body, "Inter", sans-serif);
+  font-weight: 700;
+  color: var(--color-slate, #5c6b7a);
+}
+
+.departments-view-badge {
+  font-size: 11.5px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Selected Department Header */
+.departments-emp-header {
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--color-border, #e2e7ef);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  border-top-left-radius: 10px;
+  border-top-right-radius: 10px;
+}
+
+.departments-emp-icon-box {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.departments-emp-title {
+  font-family: var(--font-display, "Sora", sans-serif);
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--color-ink, #14213d);
+  margin: 0;
+}
+
+.departments-emp-badge {
+  font-family: var(--font-body, "Inter", sans-serif);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 2px 10px;
+  border-radius: 999px;
+}
+
+.departments-emp-head-text {
+  font-family: var(--font-body, "Inter", sans-serif);
+  font-size: 13px;
+  color: var(--color-slate, #5c6b7a);
+  margin: 4px 0 0;
+}
+
+.departments-emp-filters {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.departments-search-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--color-canvas, #f4f6f9);
+  padding: 7px 12px;
+  border-radius: 8px;
+  width: 220px;
+}
+
+.departments-search-input {
+  border: none;
+  background: transparent;
+  outline: none;
+  font-family: var(--font-body, "Inter", sans-serif);
+  font-size: 13px;
+  width: 100%;
+  color: var(--color-ink, #14213d);
+}
+
+.departments-status-pills {
+  display: flex;
+  gap: 6px;
+}
+
+.departments-status-pill-btn {
+  border: none;
+  padding: 5px 12px;
+  border-radius: 6px;
+  font-family: var(--font-body, "Inter", sans-serif);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  background: var(--color-canvas, #f4f6f9);
+  color: var(--color-slate, #5c6b7a);
+  transition: all 0.15s ease;
+}
+
+.departments-status-pill-btn.active {
+  background: var(--color-ink, #14213d);
+  color: #ffffff;
+}
+
+/* Table */
+.departments-table-row {
+  border-bottom: 1px solid var(--color-border, #e2e7ef);
+  cursor: pointer;
+}
+
+.departments-table-cell {
+  padding: 12px 16px;
+}
+
+.departments-staff-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.departments-staff-name {
+  font-weight: 600;
+  color: var(--color-ink, #14213d);
+}
+
+.departments-reports-to {
+  font-size: 11px;
+  color: var(--color-slate-light, #8a97a6);
+}
+
+.departments-cell-code {
+  font-family: var(--font-mono, monospace);
+  font-size: 13px;
+  color: var(--color-slate, #5c6b7a);
+}
+
+.departments-cell-role {
+  color: var(--color-ink, #14213d);
+  font-weight: 500;
+}
+
+.departments-cell-muted {
+  color: var(--color-slate, #5c6b7a);
+}
+
+.departments-cell-icon-text {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+}
+

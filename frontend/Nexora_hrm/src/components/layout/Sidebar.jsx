@@ -1,14 +1,13 @@
-import React from "react";
-import { LogOut, ChevronLeft, ChevronRight, UserCheck, Shield } from "lucide-react";
+import React, { useState } from "react";
+import { LogOut, ChevronLeft, ChevronRight, UserCheck, Shield, KeyRound } from "lucide-react";
 import { C, NAV, EMP_NAV } from "../../constants/theme";
+import ChangePasswordModal from "../common/ChangePasswordModal";
 
 export default function Sidebar({ page, setPage, open, onToggle, onLogout, user }) {
+  const [showChangePassword, setShowChangePassword] = useState(false);
   const W = open ? 224 : 64;
 
-  const isEmpRole = user?.role === "employee";
-  const isEmpPage = page.startsWith("emp-");
-  const isEmpMode = isEmpPage || isEmpRole;
-
+  const isEmpMode = user?.role === "employee";
   const currentNav = isEmpMode ? EMP_NAV : NAV;
 
   return (
@@ -50,6 +49,35 @@ export default function Sidebar({ page, setPage, open, onToggle, onLogout, user 
 
       {/* Footer */}
       <div style={{ padding: "12px 10px", borderTop: "1px solid rgba(255,255,255,0.08)", display: "flex", flexDirection: "column", gap: 6 }}>
+        {isEmpMode && (
+          <div
+            onClick={() => setShowChangePassword(true)}
+            title={open ? "" : "Change Password"}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              color: "rgba(255,255,255,0.72)",
+              cursor: "pointer",
+              padding: "7px 10px",
+              borderRadius: 7,
+              fontFamily: "Inter, sans-serif",
+              fontSize: 13,
+              transition: "all 0.15s ease",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.color = "#fff";
+              e.currentTarget.style.background = "rgba(255,255,255,0.08)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.color = "rgba(255,255,255,0.72)";
+              e.currentTarget.style.background = "transparent";
+            }}
+          >
+            <KeyRound size={16} style={{ flexShrink: 0, color: C.teal }} />
+            {open && "Change Password"}
+          </div>
+        )}
 
         <div
           onClick={onToggle}
@@ -68,6 +96,10 @@ export default function Sidebar({ page, setPage, open, onToggle, onLogout, user 
           {open && "Sign out"}
         </div>
       </div>
+
+      {showChangePassword && (
+        <ChangePasswordModal onClose={() => setShowChangePassword(false)} />
+      )}
     </div>
   );
 }
